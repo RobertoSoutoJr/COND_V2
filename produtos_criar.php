@@ -1,3 +1,4 @@
+<?php require_once 'auth_check.php'; ?>
 <?php
 require_once 'conexao.php';
 
@@ -224,5 +225,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     </script>
+    <?php include 'toast_handler.php'; ?>
 </body>
 </html>

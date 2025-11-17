@@ -1,3 +1,4 @@
+<?php require_once 'auth_check.php'; ?>
 <?php
 require_once 'conexao.php';
 
@@ -17,7 +18,7 @@ $id_pre_selecionado = $_GET['cliente_id'] ?? '';
 // Processar o Formulário
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        $pdo->beginTransaction(); 
+        $pdo->beginTransaction();
 
         // 1. Criar o Condicional (Cabeçalho)
         $sql_cond = "INSERT INTO condicionais (cliente_id, data_prevista_retorno, observacoes) 
@@ -35,14 +36,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $quantidades = $_POST['quantidades'] ?? [];
 
         foreach ($produtos_selecionados as $index => $produto_id) {
-            if (empty($produto_id)) continue;
+            if (empty($produto_id))
+                continue;
             $qtd = $quantidades[$index];
 
             // Pega o preço (já tínhamos)
             $stmt_preco = $pdo->prepare("SELECT preco FROM produtos WHERE id = ?");
             $stmt_preco->execute([$produto_id]);
             $prod_dados = $stmt_preco->fetch();
-            
+
             // Inserir Item
             $sql_item = "INSERT INTO itens_condicional (condicional_id, produto_id, quantidade, preco_momento) 
                          VALUES (:cond_id, :prod_id, :qtd, :preco)";
@@ -61,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $pdo->commit();
-        
+
         // Redireciona para uma página de sucesso (ou a lista)
         header("Location: condicionais_lista.php?msg=sucesso");
         exit;
@@ -75,36 +77,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <title>Novo Condicional</title>
     <script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    theme: {
-      extend: {
-        colors: {
-          // Aqui está sua cor personalizada
-          'roxo-base': '#6753d8', // que é o seu rgba(103, 83, 216)
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        // Aqui está sua cor personalizada
+                        'roxo-base': '#6753d8', // que é o seu rgba(103, 83, 216)
+                    }
+                }
+            }
         }
-      }
-    }
-  }
-</script>
+    </script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
+
 <body class="bg-gray-100 pb-20">
 
     <?php include 'menu.php'; ?>
 
     <div class="container mx-auto mt-10 px-4">
         <div class="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-lg">
-            
+
             <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">Nova Sacola (Condicional)</h2>
             <?= $mensagem ?>
 
             <form method="POST" action="">
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     <div>
                         <label class="block text-gray-700 font-bold mb-2">Cliente *</label>
@@ -120,55 +124,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                     <div>
                         <label class="block text-gray-700 font-bold mb-2">Data Prevista Retorno *</label>
-                        <input type="date" name="data_retorno" class="w-full border rounded p-2" min="<?= date('Y-m-d') ?>" required>
+                        <input type="date" name="data_retorno" class="w-full border rounded p-2"
+                            min="<?= date('Y-m-d') ?>" required>
                     </div>
                     <div class="md:col-span-2">
                         <label class="block text-gray-700 font-bold mb-2">Observações</label>
-                        <input type="text" name="observacoes" class="w-full border rounded p-2" placeholder="Ex: Cliente levou para provar...">
+                        <input type="text" name="observacoes" class="w-full border rounded p-2"
+                            placeholder="Ex: Cliente levou para provar...">
                     </div>
                 </div>
 
                 <h3 class="text-xl font-bold text-gray-800 mb-4">Itens da Sacola</h3>
-                
+
                 <div id="lista-produtos">
                     <div class="produto-row flex flex-wrap md:flex-nowrap gap-4 mb-4 items-center border-b pb-4">
-                        
-                        <div class="w-16 h-16 bg-gray-100 rounded border flex items-center justify-center text-gray-400 flex-shrink-0">
+
+                        <div
+                            class="w-16 h-16 bg-gray-100 rounded border flex items-center justify-center text-gray-400 flex-shrink-0">
                             <img src="" class="produto-imagem-preview w-full h-full object-cover rounded hidden">
                             <span class="emoji-preview text-2xl">👗</span>
                         </div>
 
                         <div class="w-full md:w-3/4">
                             <label class="block text-sm font-bold text-gray-600 mb-1">Produto</label>
-                            <select name="produtos[]" class="w-full border rounded p-2 bg-white" required onchange="atualizarImagemPreview(this)">
+                            <select name="produtos[]" class="w-full border rounded p-2 bg-white" required
+                                onchange="atualizarImagemPreview(this)">
                                 <option value="">Selecione...</option>
                                 <?php foreach ($produtos as $prod): ?>
                                     <option value="<?= $prod['id'] ?>" data-imagem="<?= $prod['imagem'] ?>">
-                                        <?= htmlspecialchars($prod['nome']) ?> 
+                                        <?= htmlspecialchars($prod['nome']) ?>
                                         (Tam: <?= $prod['tamanho'] ?> | R$ <?= $prod['preco'] ?>)
                                     </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        
+
                         <div class="w-24">
                             <label class="block text-sm font-bold text-gray-600 mb-1">Qtd.</label>
-                            <input type="number" name="quantidades[]" value="1" min="1" class="w-full border rounded p-2 text-center" required>
+                            <input type="number" name="quantidades[]" value="1" min="1"
+                                class="w-full border rounded p-2 text-center" required>
                         </div>
 
                         <div class="self-end pb-1">
-                            <button type="button" onclick="removerLinha(this)" class="text-red-500 hover:text-red-700 font-bold text-sm p-2">
+                            <button type="button" onclick="removerLinha(this)"
+                                class="text-red-500 hover:text-red-700 font-bold text-sm p-2">
                                 X
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <button type="button" onclick="adicionarProduto()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded text-sm mb-8">
+                <button type="button" onclick="adicionarProduto()"
+                    class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded text-sm mb-8">
                     + Adicionar Outra Peça
                 </button>
 
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-800 text-white font-bold py-4 px-6 rounded-lg text-lg shadow-lg transition">
+                <button type="submit"
+                    class="w-full bg-blue-600 hover:bg-blue-800 text-white font-bold py-4 px-6 rounded-lg text-lg shadow-lg transition">
                     Gerar Condicional e Baixar Estoque
                 </button>
             </form>
@@ -180,10 +192,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         function atualizarImagemPreview(selectElement) {
             // Pega o <option> selecionado
             const option = selectElement.options[selectElement.selectedIndex];
-            
+
             // Pega o nome da imagem que escondemos no 'data-imagem'
             const nomeImagem = option.getAttribute('data-imagem');
-            
+
             // Acha os elementos de preview (img e emoji) DENTRO da mesma linha
             const linha = selectElement.closest('.produto-row');
             const imgPreview = linha.querySelector('.produto-imagem-preview');
@@ -206,7 +218,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         function adicionarProduto() {
             const primeiraLinha = document.querySelector('.produto-row');
             const novaLinha = primeiraLinha.cloneNode(true);
-            
+
             // Limpa os valores clonados
             novaLinha.querySelector('select').value = '';
             novaLinha.querySelector('input[type="number"]').value = '1';
@@ -227,5 +239,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     </script>
+
+    <?php include 'toast_handler.php'; ?>
 </body>
+
+
+
 </html>

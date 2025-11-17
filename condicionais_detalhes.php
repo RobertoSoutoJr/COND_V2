@@ -1,3 +1,4 @@
+<?php require_once 'auth_check.php'; ?>
 <?php
 require_once 'conexao.php';
 
@@ -213,5 +214,7 @@ try {
             document.getElementById('form-preco-' + itemId).classList.toggle('hidden');
         }
     </script>
+
+    <?php include 'toast_handler.php'; ?>
 </body>
 </html>

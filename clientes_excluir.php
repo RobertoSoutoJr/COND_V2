@@ -1,3 +1,4 @@
+<?php require_once 'auth_check.php'; ?>
 <?php
 require_once 'conexao.php';
 
