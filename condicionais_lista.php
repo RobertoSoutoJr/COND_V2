@@ -8,8 +8,8 @@ $allowedSort = [
     'cliente' => 'cliente_nome', 'saida'   => 'data_saida', 'retorno' => 'data_prevista_retorno',
     'pecas'   => 'qtd_pecas_total', 'valor'   => 'valor_total_sacola', 'status'  => 'status'
 ];
-$sortParam = $_GET['sort'] ?? 'status';
-$sortDir_URL = $_GET['dir'] ?? 'asc';
+$sortParam = $_GET['sort'] ?? 'saida';
+$sortDir_URL = $_GET['dir'] ?? 'desc';
 if (!array_key_exists($sortParam, $allowedSort)) $sortParam = 'status';
 $sortDir_SQL = (strtolower($sortDir_URL) === 'desc') ? 'DESC' : 'ASC';
 $sortColumnDB = $allowedSort[$sortParam];

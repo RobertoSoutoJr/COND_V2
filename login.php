@@ -73,7 +73,7 @@ $msg_url = $_GET['msg'] ?? '';
     <div class="w-full max-w-md bg-white rounded-lg shadow-xl p-8 mx-4">
 
         <div class="flex justify-center mb-6">
-            <img src="img/logo.png" alt="Logo Loja" class="h-16 w-16">
+            <img src="img/cond_logo.png" alt="Logo COND" class="h-32 w-32">
         </div>
 
         <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Controle de Condicionais</h2>

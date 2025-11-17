@@ -1,10 +1,7 @@
 <?php 
-// 1. AUTENTICAÇÃO
 require_once 'auth_check.php'; 
-// 2. CONEXÃO
 require_once 'conexao.php';
 
-// 3. TÍTULO DA PÁGINA (Para o menu móvel)
 $titulo_pagina = "Dashboard"; 
 
 // --- 4. KPIs (Lógica inalterada) ---
@@ -56,7 +53,6 @@ try {
 <body class="bg-gray-100">
 
     <?php 
-    // O menu.php agora vai ler a $titulo_pagina que definimos acima
     include 'menu.php'; 
     ?>
 
@@ -76,24 +72,41 @@ try {
             
             <button id="abrirModalLucro" class="bg-white rounded-lg shadow p-6 border-l-4 border-green-500 text-left transition transform hover:scale-105 hover:shadow-lg">
                 <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-green-100 text-green-600 mr-4"><i class="bi bi-graph-up-arrow text-2xl"></i></div>
-                    <div><p class="text-gray-500 text-sm font-bold uppercase">Lucro (30 dias)</p><p class="text-3xl font-bold text-gray-800">R$ <?= number_format($lucro_mes ?: 0, 2, ',', '.') ?></p></div>
+                    <div class="p-3 rounded-full bg-green-100 text-green-600 mr-4">
+                        <i class="bi bi-graph-up-arrow text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-sm font-bold uppercase">
+                            Lucro 
+                            <span class="text-roxo-base font-extrabold">(Ver Mais)</span>
+                        </p> 
+                        <p class="text-3xl font-bold text-gray-800">R$ <?= number_format($lucro_mes ?: 0, 2, ',', '.') ?></p>
+                    </div>
                 </div>
             </button>
 
             <div class="bg-white rounded-lg shadow p-6 border-l-4 border-amber-500">
                 <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-amber-100 text-amber-600 mr-4"><i class="bi bi-truck text-2xl"></i></div>
-                    <div><p class="text-gray-500 text-sm font-bold uppercase">Valor na Rua</p><p class="text-3xl font-bold text-gray-800">R$ <?= number_format($valor_rua ?: 0, 2, ',', '.') ?></p></div>
+                    <div class="p-3 rounded-full bg-amber-100 text-amber-600 mr-4">
+                        <i class="bi bi-truck text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-sm font-bold uppercase">Valor na Rua</p>
+                        <p class="text-3xl font-bold text-gray-800">R$ <?= number_format($valor_rua ?: 0, 2, ',', '.') ?></p>
+                    </div>
                 </div>
             </div>
 
             <div class="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
                 <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-blue-100 text-blue-600 mr-4"><i class="bi bi-star-fill text-2xl"></i></div>
+                    <div class="p-3 rounded-full bg-blue-100 text-blue-600 mr-4">
+                        <i class="bi bi-star-fill text-2xl"></i>
+                    </div>
                     <div>
                         <p class="text-gray-500 text-sm font-bold uppercase">Top Peça (30d)</p>
-                        <p class="text-xl font-bold text-gray-800 truncate" title="<?= $top_peca['nome'] ?? 'N/A' ?>"><?= $top_peca['nome'] ?? 'N/A' ?></p>
+                        <p class="text-xl font-bold text-gray-800 truncate" title="<?= $top_peca['nome'] ?? 'N/A' ?>">
+                            <?= $top_peca['nome'] ?? 'N/A' ?>
+                        </p>
                         <p class="text-sm text-gray-500"><?= $top_peca['total_vendido'] ?? '0' ?> un.</p>
                     </div>
                 </div>
@@ -101,10 +114,14 @@ try {
 
             <div class="bg-white rounded-lg shadow p-6 border-l-4 border-roxo-base">
                 <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-purple-100 text-roxo-base mr-4"><i class="bi bi-person-check-fill text-2xl"></i></div>
+                    <div class="p-3 rounded-full bg-purple-100 text-roxo-base mr-4">
+                        <i class="bi bi-person-check-fill text-2xl"></i>
+                    </div>
                     <div>
                         <p class="text-gray-500 text-sm font-bold uppercase">Top Cliente (30d)</p>
-                        <p class="text-xl font-bold text-gray-800 truncate" title="<?= $top_cliente['nome'] ?? 'N/A' ?>"><?= $top_cliente['nome'] ?? 'N/A' ?></p>
+                        <p class="text-xl font-bold text-gray-800 truncate" title="<?= $top_cliente['nome'] ?? 'N/A' ?>">
+                            <?= $top_cliente['nome'] ?? 'N/A' ?>
+                        </p>
                         <p class="text-sm text-gray-500">R$ <?= number_format($top_cliente['total_comprado'] ?? 0, 2, ',', '.') ?></p>
                     </div>
                 </div>
@@ -182,7 +199,6 @@ try {
     </div>
 
     <script>
-        // --- CÓDIGO DO GRÁFICO ---
         let meuGraficoLucro;
         const modalLucro = document.getElementById('modalLucro');
         const btnAbrirLucro = document.getElementById('abrirModalLucro');
@@ -212,20 +228,16 @@ try {
         btnFiltrarLucro.addEventListener('click', carregarGrafico);
         modalLucro.addEventListener('click', (e) => { if (e.target === modalLucro) btnFecharLucro.click(); });
 
-
         // --- CÓDIGO DO MODAL DE SACOLAS ATRASADAS ---
         const modalAtrasados = document.getElementById('modalAtrasados');
         const btnAbrirAtrasados = document.getElementById('abrirModalAtrasados');
         const btnFecharAtrasados = document.getElementById('fecharModalAtrasados');
         const corpoTabelaAtrasados = document.getElementById('listaSacolasAtrasadas');
-
-        // Função de formatar data (Corrigida)
         function formatarData(dataISO) {
-            const dataApenas = dataISO.split(' ')[0]; // "2025-10-30"
+            const dataApenas = dataISO.split(' ')[0];
             const [ano, mes, dia] = dataApenas.split('-');
             return `${dia}/${mes}/${ano}`;
         }
-
         async function carregarSacolasAtrasadas() {
             corpoTabelaAtrasados.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-gray-500">Carregando...</td></tr>';
             try {
@@ -268,6 +280,5 @@ try {
         btnFecharAtrasados.addEventListener('click', () => { modalAtrasados.classList.add('hidden'); corpoTabelaAtrasados.innerHTML = ''; });
         modalAtrasados.addEventListener('click', (e) => { if (e.target === modalAtrasados) btnFecharAtrasados.click(); });
     </script>
-    <?php include 'toast_handler.php'; ?>
 </body>
 </html>
