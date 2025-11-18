@@ -1,6 +1,7 @@
 <?php 
 require_once 'auth_check.php'; 
 require_once 'conexao.php';
+require_once 'whatsapp_utils.php';
 $hoje = date('Y-m-d');
 
 // ... (Todo o seu PHP de Ordenação e SQL permanece o mesmo) ...
@@ -204,6 +205,20 @@ try {
                             </td>
                             <td data-label="Ação" class="px-5 py-3 md:py-5 text-sm md:table-cell md:text-center celula-acao">
                                 <div class="flex justify-center items-center space-x-2">
+                                    <?php 
+                                        // Prepara os dados para a função do WhatsApp
+                                        $condicional_data = [
+                                            'id' => $c['id'],
+                                            'status' => $c['status'],
+                                            'data_prevista_retorno' => $c['data_prevista_retorno'],
+                                            'cliente_nome' => $c['cliente_nome'],
+                                            'telefone' => $c['telefone']
+                                        ];
+                                        $link_whatsapp = gerarLinkWhatsApp($pdo, $condicional_data);
+                                    ?>
+                                    <a href="<?= $link_whatsapp ?>" target="_blank" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded text-xs shadow" title="Enviar WhatsApp">
+                                        <i class="bi bi-whatsapp"></i>
+                                    </a>
                                     <?php if($c['status'] !== 'FINALIZADO'): ?>
                                         <a href="condicionais_baixar.php?id=<?= $c['id'] ?>" class="bg-roxo-base hover:bg-purple-700 text-white font-bold py-2 px-3 rounded text-xs shadow" title="Receber/Baixar">
                                             <i class="bi bi-arrow-down-up"></i>

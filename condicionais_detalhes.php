@@ -1,6 +1,7 @@
 <?php
 require_once 'auth_check.php';
 require_once 'conexao.php';
+require_once 'whatsapp_utils.php';
 
 // Título da Página
 $titulo_pagina = "Detalhes da Sacola";
@@ -125,6 +126,23 @@ try {
                     <p class="text-gray-600 text-lg mt-1 font-bold"><?= htmlspecialchars($condicional['nome']) ?></p>
                     <p class="text-gray-500">CPF: <?= $condicional['cpf'] ?> / Tel: <?= $condicional['telefone'] ?></p>
                     <div class="mt-4 border-t pt-4">
+                                <p class="text-xs text-gray-400 uppercase font-bold">Ações</p>
+                                <?php 
+                                    // Prepara os dados para a função do WhatsApp
+                                    $condicional_data = [
+                                        'id' => $condicional['id'],
+                                        'status' => $condicional['status'],
+                                        'data_prevista_retorno' => $condicional['data_prevista_retorno'],
+                                        'cliente_nome' => $condicional['nome'],
+                                        'telefone' => $condicional['telefone']
+                                    ];
+                                    $link_whatsapp = gerarLinkWhatsApp($pdo, $condicional_data);
+                                ?>
+                                <a href="<?= $link_whatsapp ?>" target="_blank" class="inline-flex items-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded text-sm shadow mt-2 transition duration-150">
+                                    <i class="bi bi-whatsapp mr-2"></i> Enviar WhatsApp
+                                </a>
+                            </div>
+                            <div class="mt-4 border-t pt-4">
                         <p class="text-xs text-gray-400 uppercase font-bold">Endereço</p>
                         <p class="text-gray-600"><?= htmlspecialchars($condicional['logradouro']) ?>, <?= htmlspecialchars($condicional['numero']) ?> - <?= htmlspecialchars($condicional['bairro']) ?></p>
                     </div>
