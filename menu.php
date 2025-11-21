@@ -36,24 +36,61 @@ if (!file_exists($caminho_foto_perfil) || empty($usuario_foto)) {
 
                 <div class="hidden md:flex items-center space-x-1">
                     <a href="index.php"
-                        class="py-4 px-4 font-semibold transition <?= checkAtivo('index.php', $pagina_atual) ?>"><i
+                        class="py-4 px-4 font-semibold transition flex items-center <?= checkAtivo('index.php', $pagina_atual) ?>"><i
                             class="bi bi-house-door-fill mr-1"></i> Início</a>
 
                     <a href="condicionais_lista.php"
-                        class="py-4 px-4 font-semibold transition <?= checkAtivo('condicionais_lista.php', $pagina_atual) ?>"><i
+                        class="py-4 px-4 font-semibold transition flex items-center <?= checkAtivo('condicionais_lista.php', $pagina_atual) ?>"><i
                             class="bi bi-bag-check-fill mr-1"></i> Sacolas</a>
 
                     <a href="condicionais_pedidos.php"
-                        class="py-4 px-4 font-semibold transition <?= checkAtivo('condicionais_pedidos.php', $pagina_atual) ?>">
+                        class="py-4 px-4 font-semibold transition flex items-center <?= checkAtivo('condicionais_pedidos.php', $pagina_atual) ?>">
                         <i class="bi bi-grid-fill mr-1"></i> Catálogo
                     </a>
 
-                    <a href="clientes_lista.php"
-                        class="py-4 px-4 font-semibold transition <?= checkAtivo('clientes_lista.php', $pagina_atual) ?>"><i
-                            class="bi bi-people-fill mr-1"></i> Clientes</a>
+                    <div class="relative group">
+                        <?php
+                        $is_cadastro_ativo = ($pagina_atual == 'clientes_lista.php' || $pagina_atual == 'fornecedores_lista.php');
+                        $classe_ativo_cadastro = $is_cadastro_ativo ? 'bg-purple-900 text-white' : 'text-purple-100 hover:bg-purple-700 hover:text-white';
+                        ?>
+                        <button
+                            class="py-4 px-4 font-semibold transition flex items-center <?= $classe_ativo_cadastro ?>">
+                            <i class="bi bi-person-lines-fill mr-1"></i> Cadastros <i
+                                class="bi bi-chevron-down text-xs ml-1 transition-transform group-hover:rotate-180"></i>
+                        </button>
+                        <div
+                            class="absolute hidden group-hover:block bg-white shadow-lg rounded-b-md z-50 w-56 top-full left-0">
+                            <a href="clientes_lista.php"
+                                class="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 hover:text-roxo-base font-medium"><i
+                                    class="bi bi-people-fill mr-2 text-roxo-base"></i>Clientes</a>
+                            <a href="fornecedores_lista.php"
+                                class="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 hover:text-roxo-base font-medium"><i
+                                    class="bi bi-truck-flatbed mr-2 text-roxo-base"></i>Fornecedores</a>
+                        </div>
+                    </div>
                     <a href="produtos_listar.php"
-                        class="py-4 px-4 font-semibold transition <?= checkAtivo('produtos_listar.php', $pagina_atual) ?>"><i
+                        class="py-4 px-4 font-semibold transition flex items-center <?= checkAtivo('produtos_listar.php', $pagina_atual) ?>"><i
                             class="bi bi-box-seam-fill mr-1"></i> Estoque</a>
+                    <div class="relative group">
+                        <?php
+                        $is_movimentos_ativo = ($pagina_atual == 'entradas_lista.php' || $pagina_atual == 'contas_a_receber_lista.php');
+                        $classe_ativo_movimentos = $is_movimentos_ativo ? 'bg-purple-900 text-white' : 'text-purple-100 hover:bg-purple-700 hover:text-white';
+                        ?>
+                        <button
+                            class="py-4 px-4 font-semibold transition flex items-center <?= $classe_ativo_movimentos ?>">
+                            <i class="bi bi-currency-exchange mr-1"></i> Movimentos <i
+                                class="bi bi-chevron-down text-xs ml-1 transition-transform group-hover:rotate-180"></i>
+                        </button>
+                        <div
+                            class="absolute hidden group-hover:block bg-white shadow-lg rounded-b-md z-50 w-56 top-full left-0">
+                            <a href="entradas_lista.php"
+                                class="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 hover:text-roxo-base font-medium"><i
+                                    class="bi bi-box-arrow-in-down mr-2 text-roxo-base"></i>Entradas</a>
+                            <a href="contas_a_receber_lista.php"
+                                class="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 hover:text-roxo-base font-medium"><i
+                                    class="bi bi-cash-coin mr-2 text-roxo-base"></i>Contas a Receber</a>
+                        </div>
+                    </div>
 
                     <div class="relative group">
                         <?php
@@ -78,7 +115,7 @@ if (!file_exists($caminho_foto_perfil) || empty($usuario_foto)) {
 
                     <?php if ($usuario_nivel == 'admin'): ?>
                         <a href="usuarios_lista.php"
-                            class="py-4 px-4 font-semibold transition <?= checkAtivo('usuarios_lista.php', $pagina_atual) ?>"><i
+                            class="py-4 px-4 font-semibold transition flex items-center <?= checkAtivo('usuarios_lista.php', $pagina_atual) ?>"><i
                                 class="bi bi-shield-lock-fill mr-1"></i> Admin</a>
                     <?php endif; ?>
                 </div>
@@ -116,10 +153,22 @@ if (!file_exists($caminho_foto_perfil) || empty($usuario_foto)) {
                 class="block py-2 px-4 text-sm text-purple-100 hover:bg-purple-700 hover:text-white rounded">Sacolas</a>
             <a href="condicionais_pedidos.php"
                 class="block py-2 px-4 text-sm text-purple-100 hover:bg-purple-700 hover:text-white rounded">Catálogo</a>
+            <div class="py-2 px-4 text-sm text-purple-100 font-bold flex items-center">
+                <i class="bi bi-person-lines-fill mr-2"></i> Cadastros
+            </div>
             <a href="clientes_lista.php"
-                class="block py-2 px-4 text-sm text-purple-100 hover:bg-purple-700 hover:text-white rounded">Clientes</a>
+                class="block py-2 pl-8 text-sm text-purple-100 hover:bg-purple-700 hover:text-white rounded">Clientes</a>
+            <a href="fornecedores_lista.php"
+                class="block py-2 pl-8 text-sm text-purple-100 hover:bg-purple-700 hover:text-white rounded">Fornecedores</a>
             <a href="produtos_listar.php"
                 class="block py-2 px-4 text-sm text-purple-100 hover:bg-purple-700 hover:text-white rounded">Estoque</a>
+            <div class="py-2 px-4 text-sm text-purple-100 font-bold flex items-center">
+                <i class="bi bi-currency-exchange mr-2"></i> Movimentos
+            </div>
+            <a href="entradas_lista.php"
+                class="block py-2 pl-8 text-sm text-purple-100 hover:bg-purple-700 hover:text-white rounded">Entradas</a>
+            <a href="contas_a_receber_lista.php"
+                class="block py-2 pl-8 text-sm text-purple-100 hover:bg-purple-700 hover:text-white rounded">Contas a Receber</a>
             <a href="relatorio_vendas.php"
                 class="block py-2 px-4 text-sm text-purple-100 hover:bg-purple-700 hover:text-white rounded">Relatório
                 de Vendas</a>
