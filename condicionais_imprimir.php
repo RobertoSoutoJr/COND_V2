@@ -22,9 +22,9 @@ try {
     if (!$condicional)
         die("Condicional não encontrado.");
 
-    // 2. Pega os Itens da Sacola (SEM fotos)
+    // 2. Pega os Itens da Sacola (COM STATUS)
     $stmt_itens = $pdo->prepare("
-        SELECT i.*, p.nome, p.tamanho, p.cor 
+        SELECT i.*, p.nome, p.tamanho, p.cor, i.status_item 
         FROM itens_condicional i
         JOIN produtos p ON i.produto_id = p.id
         WHERE i.condicional_id = ?
@@ -233,29 +233,65 @@ try {
                         <th>Tam/Cor</th>
                         <th>Qtd.</th>
                         <th>Valor Unit.</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php
-                    $total_pecas = 0;
-                    $total_valor = 0;
+                    $total_pecas_aberto = 0;
+                    $total_valor_aberto = 0;
+                    $total_pecas_vendido = 0;
+                    $total_valor_vendido = 0;
+                    $total_pecas_devolvido = 0;
+                    $total_valor_devolvido = 0;
+                    
                     foreach ($itens as $item):
-                        $total_pecas += $item['quantidade'];
-                        $total_valor += $item['preco_momento'] * $item['quantidade'];
+                        $valor_item = $item['preco_momento'] * $item['quantidade'];
+                        
+                        if ($item['status_item'] == 'EM_CONDICIONAL') {
+                            $total_pecas_aberto += $item['quantidade'];
+                            $total_valor_aberto += $valor_item;
+                        } elseif ($item['status_item'] == 'VENDIDO') {
+                            $total_pecas_vendido += $item['quantidade'];
+                            $total_valor_vendido += $valor_item;
+                        } elseif ($item['status_item'] == 'DEVOLVIDO') {
+                            $total_pecas_devolvido += $item['quantidade'];
+                            $total_valor_devolvido += $valor_item;
+                        }
                         ?>
                         <tr>
                             <td><?= htmlspecialchars($item['nome']) ?></td>
                             <td><?= htmlspecialchars($item['tamanho']) ?> / <?= htmlspecialchars($item['cor']) ?></td>
                             <td><?= $item['quantidade'] ?></td>
                             <td>R$ <?= number_format($item['preco_momento'], 2, ',', '.') ?></td>
+                            <td><?= $item['status_item'] == 'EM_CONDICIONAL' ? 'Em Aberto' : ($item['status_item'] == 'VENDIDO' ? 'Vendido' : 'Devolvido') ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
                 <tfoot>
                     <tr style="background: #eee; font-weight: bold;">
-                        <td colspan="2" style="text-align: right;">TOTAIS:</td>
-                        <td><?= $total_pecas ?> Peças</td>
-                        <td>R$ <?= number_format($total_valor, 2, ',', '.') ?></td>
+                        <td colspan="3" style="text-align: right;">Total em Aberto:</td>
+                        <td><?= $total_pecas_aberto ?> Peças</td>
+                        <td>R$ <?= number_format($total_valor_aberto, 2, ',', '.') ?></td>
+                        <td></td>
+                    </tr>
+                    <tr style="background: #e6ffe6; font-weight: bold;">
+                        <td colspan="3" style="text-align: right;">Total Vendido:</td>
+                        <td><?= $total_pecas_vendido ?> Peças</td>
+                        <td>R$ <?= number_format($total_valor_vendido, 2, ',', '.') ?></td>
+                        <td></td>
+                    </tr>
+                    <tr style="background: #e6f7ff; font-weight: bold;">
+                        <td colspan="3" style="text-align: right;">Total Devolvido:</td>
+                        <td><?= $total_pecas_devolvido ?> Peças</td>
+                        <td>R$ <?= number_format($total_valor_devolvido, 2, ',', '.') ?></td>
+                        <td></td>
+                    </tr>
+                    <tr style="background: #ccc; font-weight: bold;">
+                        <td colspan="3" style="text-align: right;">TOTAL GERAL:</td>
+                        <td><?= $total_pecas_aberto + $total_pecas_vendido + $total_pecas_devolvido ?> Peças</td>
+                        <td>R$ <?= number_format($total_valor_aberto + $total_valor_vendido + $total_valor_devolvido, 2, ',', '.') ?></td>
+                        <td></td>
                     </tr>
                 </tfoot>
             </table>
