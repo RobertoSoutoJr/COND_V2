@@ -14,37 +14,131 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $pdo->beginTransaction();
         $acoes = $_POST['acao'] ?? [];
-        $data_finalizacao = date('Y-m-d H:i:s'); // Prepara a data para a Lógica de Caixa
+        $quantidades = $_POST['quantidade'] ?? [];
+        $data_finalizacao = date('Y-m-d H:i:s');
+        $tipo_acao = $_POST['tipo_acao'] ?? 'processar'; // 'processar' ou 'faturar'
 
-        foreach ($acoes as $item_id => $acao) {
-            $stmt_item = $pdo->prepare("SELECT produto_id, quantidade FROM itens_condicional WHERE id = ? AND status_item = 'EM_CONDICIONAL'");
-            $stmt_item->execute([$item_id]);
-            $item = $stmt_item->fetch();
+        // PROCESSAR RETORNO: Apenas atualiza estoque e divide o item, mantendo a sacola aberta
+        if ($tipo_acao === 'processar') {
+            foreach ($acoes as $item_id => $acao) {
+                $stmt_item = $pdo->prepare("SELECT produto_id, quantidade FROM itens_condicional WHERE id = ? AND status_item = 'EM_CONDICIONAL'");
+                $stmt_item->execute([$item_id]);
+                $item = $stmt_item->fetch();
 
-            if ($item) {
-                if ($acao === 'devolveu') {
-                    $pdo->prepare("UPDATE itens_condicional SET status_item = 'DEVOLVIDO' WHERE id = ?")->execute([$item_id]);
-                    $pdo->prepare("UPDATE produtos SET estoque_loja = estoque_loja + ? WHERE id = ?")->execute([$item['quantidade'], $item['produto_id']]);
-                } elseif ($acao === 'vendido') {
-                    $pdo->prepare("UPDATE itens_condicional SET status_item = 'VENDIDO' WHERE id = ?")->execute([$item_id]);
+                if ($item && $acao === 'devolveu') {
+                    // Pega a quantidade informada pelo usuário (ou usa a quantidade original)
+                    $qtd_devolvida = isset($quantidades[$item_id]) && $quantidades[$item_id] > 0 ? (int)$quantidades[$item_id] : $item['quantidade'];
+                    
+                    // Valida se a quantidade não excede a quantidade original
+                    if ($qtd_devolvida > $item['quantidade']) {
+                        $qtd_devolvida = $item['quantidade'];
+                    }
+                    
+                    $qtd_restante = $item['quantidade'] - $qtd_devolvida;
+
+                    // 1. Devolve ao estoque a quantidade devolvida
+                    $pdo->prepare("UPDATE produtos SET estoque_loja = estoque_loja + ? WHERE id = ?")->execute([$qtd_devolvida, $item['produto_id']]);
+
+                    // 2. Atualiza o item original para DEVOLVIDO (ou o que sobrou)
+                    if ($qtd_restante > 0) {
+                        // Devolução parcial: Atualiza o item original para a parte devolvida e cria um novo para o restante
+                        
+                        // Atualiza o item original para DEVOLVIDO (com a quantidade devolvida)
+                        $pdo->prepare("UPDATE itens_condicional SET quantidade = ?, status_item = 'DEVOLVIDO' WHERE id = ?")->execute([$qtd_devolvida, $item_id]);
+                        
+                        // Cria novo item para a quantidade restante (EM_CONDICIONAL)
+                        $stmt_novo = $pdo->prepare("INSERT INTO itens_condicional (condicional_id, produto_id, quantidade, preco_momento, status_item) 
+                                                     SELECT condicional_id, produto_id, ?, preco_momento, 'EM_CONDICIONAL' FROM itens_condicional WHERE id = ?");
+                        $stmt_novo->execute([$qtd_restante, $item_id]);
+                        
+                    } else {
+                        // Devolução total: Apenas marca o item original como DEVOLVIDO
+                        $pdo->prepare("UPDATE itens_condicional SET status_item = 'DEVOLVIDO' WHERE id = ?")->execute([$item_id]);
+                    }
+                }
+                // Se marcou como "vendido", não faz nada (mantém EM_CONDICIONAL)
+            }
+            
+            $mensagem_tipo = "Retorno processado! Saldo atualizado na sacola.";
+        }
+        // FATURAR: Finaliza os itens definitivamente
+        else {
+            foreach ($acoes as $item_id => $acao) {
+                $stmt_item = $pdo->prepare("SELECT produto_id, quantidade FROM itens_condicional WHERE id = ? AND status_item = 'EM_CONDICIONAL'");
+                $stmt_item->execute([$item_id]);
+                $item = $stmt_item->fetch();
+
+                if ($item) {
+                    // Pega a quantidade informada pelo usuário (ou usa a quantidade original)
+                    $qtd_acao = isset($quantidades[$item_id]) && $quantidades[$item_id] > 0 ? (int)$quantidades[$item_id] : $item['quantidade'];
+                    
+                    // Valida se a quantidade não excede a quantidade original
+                    if ($qtd_acao > $item['quantidade']) {
+                        $qtd_acao = $item['quantidade'];
+                    }
+
+                    if ($acao === 'devolveu') {
+                        // Se devolveu parcialmente, precisa criar um novo item para a parte vendida
+                        if ($qtd_acao < $item['quantidade']) {
+                            $qtd_vendida = $item['quantidade'] - $qtd_acao;
+                            
+                            // Atualiza o item original com a quantidade devolvida
+                            $pdo->prepare("UPDATE itens_condicional SET quantidade = ?, status_item = 'DEVOLVIDO' WHERE id = ?")->execute([$qtd_acao, $item_id]);
+                            
+                            // Cria novo item para a quantidade vendida
+                            $stmt_novo = $pdo->prepare("INSERT INTO itens_condicional (condicional_id, produto_id, quantidade, preco_momento, status_item) 
+                                                         SELECT condicional_id, produto_id, ?, preco_momento, 'VENDIDO' FROM itens_condicional WHERE id = ?");
+                            $stmt_novo->execute([$qtd_vendida, $item_id]);
+                            
+                            // Devolve ao estoque apenas a quantidade devolvida
+                            $pdo->prepare("UPDATE produtos SET estoque_loja = estoque_loja + ? WHERE id = ?")->execute([$qtd_acao, $item['produto_id']]);
+                        } else {
+                            // Devolveu tudo
+                            $pdo->prepare("UPDATE itens_condicional SET status_item = 'DEVOLVIDO' WHERE id = ?")->execute([$item_id]);
+                            $pdo->prepare("UPDATE produtos SET estoque_loja = estoque_loja + ? WHERE id = ?")->execute([$item['quantidade'], $item['produto_id']]);
+                        }
+                    } elseif ($acao === 'vendido') {
+                        // Se vendeu parcialmente, precisa criar um novo item para a parte devolvida
+                        if ($qtd_acao < $item['quantidade']) {
+                            $qtd_devolvida = $item['quantidade'] - $qtd_acao;
+                            
+                            // Atualiza o item original com a quantidade vendida
+                            $pdo->prepare("UPDATE itens_condicional SET quantidade = ?, status_item = 'VENDIDO' WHERE id = ?")->execute([$qtd_acao, $item_id]);
+                            
+                            // Cria novo item para a quantidade devolvida
+                            $stmt_novo = $pdo->prepare("INSERT INTO itens_condicional (condicional_id, produto_id, quantidade, preco_momento, status_item) 
+                                                         SELECT condicional_id, produto_id, ?, preco_momento, 'DEVOLVIDO' FROM itens_condicional WHERE id = ?");
+                            $stmt_novo->execute([$qtd_devolvida, $item_id]);
+                            
+                            // Devolve ao estoque a quantidade devolvida
+                            $pdo->prepare("UPDATE produtos SET estoque_loja = estoque_loja + ? WHERE id = ?")->execute([$qtd_devolvida, $item['produto_id']]);
+                        } else {
+                            // Vendeu tudo
+                            $pdo->prepare("UPDATE itens_condicional SET status_item = 'VENDIDO' WHERE id = ?")->execute([$item_id]);
+                        }
+                    }
                 }
             }
-        }
 
-        // Verifica se fechou a sacola
-        $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM itens_condicional WHERE condicional_id = ? AND status_item = 'EM_CONDICIONAL'");
-        $stmt_check->execute([$cond_id]);
-        $pendentes = $stmt_check->fetchColumn();
+            // Verifica se fechou a sacola (apenas se for FATURAR)
+            $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM itens_condicional WHERE condicional_id = ? AND status_item = 'EM_CONDICIONAL'");
+            $stmt_check->execute([$cond_id]);
+            $pendentes = $stmt_check->fetchColumn();
 
-        if ($pendentes == 0) {
-            // -- ATUALIZAÇÃO PARA LÓGICA DE CAIXA --
-            // Adicionamos a data_finalizacao ao fechar
-            $pdo->prepare("UPDATE condicionais SET status = 'FINALIZADO', data_finalizacao = ? WHERE id = ?")->execute([$data_finalizacao, $cond_id]);
+            if ($pendentes == 0) {
+                $pdo->prepare("UPDATE condicionais SET status = 'FINALIZADO', data_finalizacao = ? WHERE id = ?")->execute([$data_finalizacao, $cond_id]);
+            } else {
+                // Força finalização mesmo com itens pendentes ao faturar
+                $pdo->prepare("UPDATE condicionais SET status = 'FINALIZADO', data_finalizacao = ? WHERE id = ?")->execute([$data_finalizacao, $cond_id]);
+            }
+            
+            $mensagem_tipo = "Sacola faturada com sucesso!";
         }
+        
         $pdo->commit();
 
-        $mensagem = "<div class='bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4'>Baixa realizada com sucesso!</div>";
-        header("Location: condicionais_baixar.php?id=$cond_id&msg=sucesso");
+        $mensagem = "<div class='bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4'>{$mensagem_tipo}</div>";
+        header("Location: condicionais_baixar.php?id=$cond_id&msg=sucesso&tipo={$tipo_acao}");
         exit;
 
     } catch (Exception $e) {
@@ -83,7 +177,9 @@ try {
 }
 
 if (isset($_GET['msg']) && $_GET['msg'] == 'sucesso') {
-    $mensagem = "<div class='bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4'>Baixa realizada com sucesso!</div>";
+    $tipo = $_GET['tipo'] ?? 'processar';
+    $mensagem_texto = $tipo === 'faturar' ? 'Sacola faturada com sucesso!' : 'Retorno processado! Saldo atualizado na sacola.';
+    $mensagem = "<div class='bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4'>{$mensagem_texto}</div>";
 }
 ?>
 
@@ -106,6 +202,14 @@ if (isset($_GET['msg']) && $_GET['msg'] == 'sucesso') {
 
     <div class="container mx-auto mt-10 px-4">
         <div class="max-w-5xl mx-auto bg-white p-8 rounded-lg shadow-lg">
+
+            <!-- BOTÃO DE VOLTAR -->
+            <div class="mb-4">
+                <a href="condicionais_lista.php" 
+                   class="inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition">
+                    <i class="bi bi-arrow-left mr-2"></i> Voltar
+                </a>
+            </div>
 
             <div class="border-b pb-4 mb-6 flex flex-wrap justify-between items-start">
                 <div>
@@ -177,7 +281,16 @@ if (isset($_GET['msg']) && $_GET['msg'] == 'sucesso') {
                                         R$ <?= number_format($item['preco_momento'], 2, ',', '.') ?>
                                     </td>
                                     <td class="py-3 px-6 text-center">
-                                        <?= $item['quantidade'] ?>
+                                        <?php if ($item['status_item'] == 'EM_CONDICIONAL'): ?>
+                                            <input type="number" 
+                                                   name="quantidade[<?= $item['id'] ?>]" 
+                                                   value="<?= $item['quantidade'] ?>" 
+                                                   min="1" 
+                                                   max="<?= $item['quantidade'] ?>"
+                                                   class="w-16 px-2 py-1 border border-gray-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-roxo-base">
+                                        <?php else: ?>
+                                            <?= $item['quantidade'] ?>
+                                        <?php endif; ?>
                                     </td>
                                     <td class="py-3 px-6 text-center">
 
@@ -220,10 +333,17 @@ if (isset($_GET['msg']) && $_GET['msg'] == 'sucesso') {
                 </div>
 
                 <?php if ($condicional['status'] != 'FINALIZADO'): ?>
-                    <div class="mt-8 flex justify-end">
-                        <button type="submit"
+                    <div class="mt-8 flex justify-end space-x-4">
+                        <!-- Botão Processar Retorno (mantém sacola aberta) -->
+                        <button type="submit" name="tipo_acao" value="processar"
                             class="bg-roxo-base hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition">
                             <i class="bi bi-check-circle-fill mr-2"></i> Processar Retorno
+                        </button>
+                        
+                        <!-- Botão Faturar (finaliza a sacola) -->
+                        <button type="submit" name="tipo_acao" value="faturar"
+                            class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition">
+                            <i class="bi bi-cash-coin mr-2"></i> Faturar
                         </button>
                     </div>
                 <?php endif; ?>
