@@ -94,7 +94,7 @@ if (!file_exists($caminho_foto_perfil) || empty($usuario_foto)) {
 
                     <div class="relative group">
                         <?php
-                        $is_relatorio_ativo = ($pagina_atual == 'relatorio_vendas.php' || $pagina_atual == 'relatorio_inventario.php');
+                        $is_relatorio_ativo = ($pagina_atual == 'relatorio_vendas.php' || $pagina_atual == 'relatorio_inventario.php' || $pagina_atual == 'relatorio_top_clientes.php');
                         $classe_ativo_relatorio = $is_relatorio_ativo ? 'bg-purple-900 text-white' : 'text-purple-100 hover:bg-purple-700 hover:text-white';
                         ?>
                         <button
@@ -110,6 +110,9 @@ if (!file_exists($caminho_foto_perfil) || empty($usuario_foto)) {
                             <a href="relatorio_inventario.php"
                                 class="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 hover:text-roxo-base font-medium"><i
                                     class="bi bi-archive-fill mr-2 text-roxo-base"></i>Relatório de Estoque</a>
+                            <a href="relatorio_top_clientes.php"
+                                class="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 hover:text-roxo-base font-medium"><i
+                                    class="bi bi-person-badge-fill mr-2 text-roxo-base"></i>Top 10 Clientes</a>
                         </div>
                     </div>
 
@@ -175,6 +178,8 @@ if (!file_exists($caminho_foto_perfil) || empty($usuario_foto)) {
             <a href="relatorio_inventario.php"
                 class="block py-2 px-4 text-sm text-purple-100 hover:bg-purple-700 hover:text-white rounded">Relatório
                 de Estoque</a>
+            <a href="relatorio_top_clientes.php"
+                class="block py-2 px-4 text-sm text-purple-100 hover:bg-purple-700 hover:text-white rounded">Top 10 Clientes</a>
             <?php if ($usuario_nivel == 'admin'): ?>
                 <a href="usuarios_lista.php"
                     class="block py-2 px-4 text-sm text-purple-100 hover:bg-purple-700 hover:text-white rounded">Admin</a>

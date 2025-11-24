@@ -129,6 +129,19 @@ try {
             </a>
         </div>
 
+        <div class="mb-6">
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="bi bi-search text-gray-400"></i>
+                </div>
+                <input type="text" 
+                       id="filtroBusca" 
+                       onkeyup="filtrarTabela()" 
+                       placeholder="Filtrar por Cliente, ID ou Status..." 
+                       class="w-full border rounded-lg py-2 px-4 pl-10 focus:outline-none focus:border-roxo-base">
+            </div>
+        </div>
+
         <div class="bg-white md:shadow-md md:rounded-lg overflow-x-auto tabela-responsiva">
             <table class="min-w-full leading-normal">
                 <thead class="hidden md:table-header-group">
@@ -172,7 +185,10 @@ try {
                         $valor_custo = $c['valor_custo_sacola'] ?: 0;
                         $lucro_potencial = $valor_venda - $valor_custo;
                     ?>
-                        <tr class="block md:table-row border-b border-gray-200 md:border-b-0 hover:bg-gray-50">
+                        <tr class="block md:table-row border-b border-gray-200 md:border-b-0 hover:bg-gray-50"
+                                data-cliente="<?= strtolower(htmlspecialchars($c['cliente_nome'])) ?>"
+                                data-id="<?= $c['id'] ?>"
+                                data-status="<?= strtolower($textoStatus) ?>">
                             
                             <td data-label="Cliente" class="px-5 py-3 md:py-5 text-sm md:table-cell">
                                 <div>
@@ -234,10 +250,50 @@ try {
                             </td>
                         </tr>
                     <?php endforeach; ?>
+                    <tr id="linhaSemResultados" class="hidden">
+                        <td colspan="7" class="text-center py-10 text-gray-500">Nenhuma sacola encontrada.</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
     </div>
+    <script>
+        function filtrarTabela() {
+            const input = document.getElementById('filtroBusca');
+            const tabela = document.querySelector('tbody');
+            const linhas = tabela.getElementsByTagName('tr');
+            const linhaSemResultados = document.getElementById('linhaSemResultados');
+            const termoBusca = input.value.toLowerCase();
+            let resultadosEncontrados = 0;
+            
+            for (let i = 0; i < linhas.length; i++) {
+                const linha = linhas[i];
+                if (linha.id === 'linhaSemResultados') continue;
+                
+                // Verifica se a linha tem os atributos de dados (para ignorar a linha de cabeçalho, se houver)
+                if (!linha.dataset.cliente) continue; 
+
+                const nomeCliente = linha.dataset.cliente;
+                const idSacola = linha.dataset.id;
+                const statusSacola = linha.dataset.status;
+                
+                // Verifica se o termo de busca está no nome do cliente, ID ou status
+                if (nomeCliente.includes(termoBusca) || idSacola.includes(termoBusca) || statusSacola.includes(termoBusca)) {
+                    linha.style.display = "";
+                    resultadosEncontrados++;
+                } else {
+                    linha.style.display = "none";
+                }
+            }
+            
+            if (resultadosEncontrados === 0) {
+                linhaSemResultados.style.display = "";
+            } else {
+                linhaSemResultados.style.display = "none";
+            }
+        }
+    </script>
+
     <?php include 'toast_handler.php'; ?>
 </body>
 </html>
