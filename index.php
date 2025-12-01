@@ -4,15 +4,22 @@ require_once 'conexao.php';
 
 $titulo_pagina = "Dashboard"; 
 
-// --- 4. KPIs (Lógica inalterada) ---
+// --- DATAS ---
 $data_30_dias = date('Y-m-d', strtotime('-30 days'));
+$hoje = date('Y-m-d');
+$daqui_7_dias = date('Y-m-d', strtotime('+7 days'));
+
 try {
-    // Lucro 30d
+    // =================================================
+    // 1. KPIs DE VENDAS (JÁ EXISTIAM)
+    // =================================================
+    
+    // Lucro 30d (Regime de Caixa)
     $stmt_lucro = $pdo->prepare("SELECT SUM((i.preco_momento * i.quantidade) - (p.preco_custo * i.quantidade)) FROM itens_condicional i JOIN produtos p ON i.produto_id = p.id JOIN condicionais c ON i.condicional_id = c.id WHERE i.status_item = 'VENDIDO' AND c.data_finalizacao >= ?");
     $stmt_lucro->execute([$data_30_dias]);
     $lucro_mes = $stmt_lucro->fetchColumn();
     
-    // Valor na Rua
+    // Valor na Rua (Potencial de Venda)
     $valor_rua = $pdo->query("SELECT SUM(i.preco_momento * i.quantidade) FROM itens_condicional i JOIN condicionais c ON i.condicional_id = c.id WHERE c.status IN ('ABERTO', 'ATRASADO') AND i.status_item = 'EM_CONDICIONAL'")->fetchColumn();
     
     // Top Peça
@@ -25,10 +32,34 @@ try {
     $stmt_top_cliente->execute([$data_30_dias]);
     $top_cliente = $stmt_top_cliente->fetch();
     
-    // KPIs Operacionais
+    // Operacional Vendas
     $total_abertos = $pdo->query("SELECT COUNT(*) FROM condicionais WHERE status = 'ABERTO'")->fetchColumn();
     $total_atrasados = $pdo->query("SELECT COUNT(*) FROM condicionais WHERE status = 'ABERTO' AND data_prevista_retorno < CURDATE()")->fetchColumn();
     $pecas_fora = $pdo->query("SELECT SUM(quantidade) FROM itens_condicional WHERE status_item = 'EM_CONDICIONAL'")->fetchColumn();
+
+    // =================================================
+    // 2. NOVOS KPIs FINANCEIROS (ENTRADAS / CONTAS A PAGAR)
+    // =================================================
+
+    // Contas a Pagar URGENTES (Vencidas ou Vencendo Hoje)
+    $stmt_pagar_hoje = $pdo->prepare("
+        SELECT SUM(valor_total) 
+        FROM entradas_produto 
+        WHERE status_pagamento = 'PENDENTE' 
+        AND data_vencimento <= ?
+    ");
+    $stmt_pagar_hoje->execute([$hoje]);
+    $pagar_urgente = $stmt_pagar_hoje->fetchColumn();
+
+    // Contas a Pagar (Próximos 7 dias)
+    $stmt_pagar_semana = $pdo->prepare("
+        SELECT SUM(valor_total) 
+        FROM entradas_produto 
+        WHERE status_pagamento = 'PENDENTE' 
+        AND data_vencimento > ? AND data_vencimento <= ?
+    ");
+    $stmt_pagar_semana->execute([$hoje, $daqui_7_dias]);
+    $pagar_semana = $stmt_pagar_semana->fetchColumn();
 
 } catch (PDOException $e) { 
     die("Erro ao carregar Dashboard: " . $e->getMessage()); 
@@ -39,120 +70,153 @@ try {
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard - Loja Condicional</title>
-
+    <title>Dashboard - COND</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = { theme: { extend: { colors: { 'roxo-base': '#6753d8' } } } }
-    </script>
+    <script>tailwind.config = { theme: { extend: { colors: { 'roxo-base': '#6753d8' } } } }</script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-gray-100">
 
-    <?php 
-    include 'menu.php'; 
-    ?>
+    <?php include 'menu.php'; ?>
 
-    <div class="container mx-auto mt-10 px-4">
+    <div class="md:ml-64 transition-all duration-300 flex flex-col min-h-screen">
         
-        <div class="mb-8 flex items-center">
-            <img src="<?= $caminho_foto_perfil ?>" alt="Foto Perfil" class="h-16 w-16 md:h-20 md:w-20 rounded-full object-cover mr-5 border-4 border-roxo-base shadow">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-800">Dashboard</h1>
-                <p class="text-gray-600 text-lg">
-                    Bem-vindo(a) de volta, <strong class="text-roxo-base"><?= htmlspecialchars($usuario_nome) ?></strong>!
-                </p>
-            </div>
+        <div class="bg-white shadow-sm p-4 md:hidden flex justify-between items-center sticky top-0 z-30">
+            <span class="font-bold text-xl text-roxo-base">COND</span>
+            <button onclick="toggleSidebar()" class="text-gray-600 focus:outline-none">
+                <i class="bi bi-list text-3xl"></i>
+            </button>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <main class="p-6 flex-1">
             
-            <button id="abrirModalLucro" class="bg-white rounded-lg shadow p-6 border-l-4 border-green-500 text-left transition transform hover:scale-105 hover:shadow-lg">
-                <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-green-100 text-green-600 mr-4">
-                        <i class="bi bi-graph-up-arrow text-2xl"></i>
+            <header class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 class="text-3xl font-extrabold text-gray-800">Visão Geral</h1>
+                    <p class="text-gray-500 mt-1">Bem-vindo de volta, <?= htmlspecialchars($_SESSION['usuario_nome']) ?> 👋</p>
+                </div>
+                <div class="mt-4 md:mt-0">
+                    <a href="condicionais_criar.php" class="inline-flex items-center justify-center px-5 py-2 text-sm font-medium text-white transition-colors bg-roxo-base rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 shadow-lg">
+                        <i class="bi bi-plus-lg mr-2"></i> Nova Sacola
+                    </a>
+                </div>
+            </header>
+
+            <h2 class="text-lg font-semibold text-gray-700 mb-4 border-l-4 border-roxo-base pl-3">Alertas Financeiros</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                
+                <a href="entradas_lista.php?sort=vencimento&dir=asc" class="block bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition group">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-bold text-red-500 uppercase tracking-wide">A Pagar (Hoje/Vencido)</p>
+                            <p class="text-2xl font-black text-gray-800 mt-2">R$ <?= number_format($pagar_urgente ?: 0, 2, ',', '.') ?></p>
+                        </div>
+                        <div class="p-3 bg-red-50 rounded-lg text-red-500 group-hover:bg-red-500 group-hover:text-white transition">
+                            <i class="bi bi-exclamation-circle-fill text-xl"></i>
+                        </div>
                     </div>
-                    <div>
-                        <p class="text-gray-500 text-sm font-bold uppercase">
-                            Lucro 
-                            <span class="text-roxo-base font-extrabold">(Ver Mais)</span>
-                        </p> 
-                        <p class="text-3xl font-bold text-gray-800">R$ <?= number_format($lucro_mes ?: 0, 2, ',', '.') ?></p>
+                </a>
+
+                <a href="entradas_lista.php" class="block bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition group">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-bold text-yellow-600 uppercase tracking-wide">A Pagar (7 Dias)</p>
+                            <p class="text-2xl font-black text-gray-800 mt-2">R$ <?= number_format($pagar_semana ?: 0, 2, ',', '.') ?></p>
+                        </div>
+                        <div class="p-3 bg-yellow-50 rounded-lg text-yellow-600 group-hover:bg-yellow-500 group-hover:text-white transition">
+                            <i class="bi bi-calendar-week text-xl"></i>
+                        </div>
+                    </div>
+                </a>
+
+                <button id="abrirModalLucro" class="w-full text-left bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition group">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-bold text-green-600 uppercase tracking-wide">
+                                Lucro (30d) <span class="text-roxo-base font-extrabold ml-1">(Ver Mais)</span>
+                            </p>
+                            <p class="text-2xl font-black text-gray-800 mt-2">R$ <?= number_format($lucro_mes ?: 0, 2, ',', '.') ?></p>
+                        </div>
+                        <div class="p-3 bg-green-50 rounded-lg text-green-600 group-hover:bg-green-500 group-hover:text-white transition">
+                            <i class="bi bi-graph-up-arrow text-xl"></i>
+                        </div>
+                    </div>
+                </button>
+            </div>
+
+            <h2 class="text-lg font-semibold text-gray-700 mb-4 border-l-4 border-blue-500 pl-3">Operação de Vendas</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-bold text-gray-400 uppercase">Na Rua (Venda)</p>
+                            <p class="text-xl font-bold text-gray-800 mt-1">R$ <?= number_format($valor_rua ?: 0, 2, ',', '.') ?></p>
+                        </div>
+                        <i class="bi bi-truck text-2xl text-gray-300"></i>
                     </div>
                 </div>
-            </button>
-
-            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-amber-500">
-                <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-amber-100 text-amber-600 mr-4">
-                        <i class="bi bi-truck text-2xl"></i>
+                
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                     <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-bold text-gray-400 uppercase">Sacolas Ativas</p>
+                            <p class="text-xl font-bold text-gray-800 mt-1"><?= $total_abertos ?: 0 ?></p>
+                        </div>
+                        <i class="bi bi-bag text-2xl text-gray-300"></i>
                     </div>
-                    <div>
-                        <p class="text-gray-500 text-sm font-bold uppercase">Valor na Rua</p>
-                        <p class="text-3xl font-bold text-gray-800">R$ <?= number_format($valor_rua ?: 0, 2, ',', '.') ?></p>
+                </div>
+
+                <button id="abrirModalAtrasados" class="w-full text-left bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:bg-red-50 transition group">
+                     <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-bold text-gray-400 group-hover:text-red-600 uppercase">Atrasados</p>
+                            <p class="text-xl font-bold text-gray-800 mt-1"><?= $total_atrasados ?: 0 ?></p>
+                        </div>
+                        <i class="bi bi-exclamation-triangle text-2xl text-gray-300 group-hover:text-red-500 <?= $total_atrasados > 0 ? 'animate-pulse text-red-500' : '' ?>"></i>
+                    </div>
+                </button>
+
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                     <div class="flex items-center justify-between">
+                        <div class="overflow-hidden">
+                            <p class="text-xs font-bold text-gray-400 uppercase">Top Peça</p>
+                            <p class="text-lg font-bold text-gray-800 mt-1 truncate" title="<?= $top_peca['nome'] ?? 'N/A' ?>">
+                                <?= $top_peca['nome'] ?? '-' ?>
+                            </p>
+                            <p class="text-xs text-gray-400 mt-1"><?= $top_peca['total_vendido'] ?? 0 ?> un. vendidas</p>
+                        </div>
+                        <i class="bi bi-trophy text-2xl text-yellow-400"></i>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
-                <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-blue-100 text-blue-600 mr-4">
-                        <i class="bi bi-star-fill text-2xl"></i>
-                    </div>
-                    <div>
-                        <p class="text-gray-500 text-sm font-bold uppercase">Top Peça (30d)</p>
-                        <p class="text-xl font-bold text-gray-800 truncate" title="<?= $top_peca['nome'] ?? 'N/A' ?>">
-                            <?= $top_peca['nome'] ?? 'N/A' ?>
-                        </p>
-                        <p class="text-sm text-gray-500"><?= $top_peca['total_vendido'] ?? '0' ?> un.</p>
-                    </div>
-                </div>
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Acesso Rápido</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-20">
+                <a href="condicionais_criar.php" class="bg-white border border-gray-200 hover:border-roxo-base hover:text-roxo-base text-gray-600 p-4 rounded-lg shadow-sm text-center transition group">
+                    <i class="bi bi-bag-plus text-3xl mb-2 block group-hover:scale-110 transition-transform"></i>
+                    <span class="font-bold text-sm">Nova Sacola</span>
+                </a>
+                
+                <a href="produtos_listar.php?abrirModal=true" class="bg-white border border-gray-200 hover:border-roxo-base hover:text-roxo-base text-gray-600 p-4 rounded-lg shadow-sm text-center transition group">
+                    <i class="bi bi-box-seam text-3xl mb-2 block group-hover:scale-110 transition-transform"></i>
+                    <span class="font-bold text-sm">Novo Produto</span>
+                </a>
+                
+                <a href="entradas_criar.php" class="bg-white border border-gray-200 hover:border-roxo-base hover:text-roxo-base text-gray-600 p-4 rounded-lg shadow-sm text-center transition group">
+                    <i class="bi bi-box-arrow-in-down text-3xl mb-2 block group-hover:scale-110 transition-transform"></i>
+                    <span class="font-bold text-sm">Nova Entrada</span>
+                </a>
+                
+                <a href="clientes_criar.php" class="bg-white border border-gray-200 hover:border-roxo-base hover:text-roxo-base text-gray-600 p-4 rounded-lg shadow-sm text-center transition group">
+                    <i class="bi bi-person-plus text-3xl mb-2 block group-hover:scale-110 transition-transform"></i>
+                    <span class="font-bold text-sm">Novo Cliente</span>
+                </a>
             </div>
 
-            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-roxo-base">
-                <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-purple-100 text-roxo-base mr-4">
-                        <i class="bi bi-person-check-fill text-2xl"></i>
-                    </div>
-                    <div>
-                        <p class="text-gray-500 text-sm font-bold uppercase">Top Cliente (30d)</p>
-                        <p class="text-xl font-bold text-gray-800 truncate" title="<?= $top_cliente['nome'] ?? 'N/A' ?>">
-                            <?= $top_cliente['nome'] ?? 'N/A' ?>
-                        </p>
-                        <p class="text-sm text-gray-500">R$ <?= number_format($top_cliente['total_comprado'] ?? 0, 2, ',', '.') ?></p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <h2 class="text-xl font-bold text-gray-800 mb-4">Situação Operacional</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            <div class="bg-white rounded-lg shadow p-5">
-                <p class="text-gray-500 text-sm font-bold uppercase">Sacolas Abertas (Total)</p>
-                <p class="text-4xl font-bold text-gray-800 mt-2"><?= $total_abertos ?></p>
-            </div>
-            <button id="abrirModalAtrasados" class="bg-white rounded-lg shadow p-5 text-left transition transform hover:scale-105 hover:shadow-lg <?= $total_atrasados > 0 ? 'border-2 border-red-500' : '' ?>">
-                <p class="text-gray-500 text-sm font-bold uppercase">Sacolas Atrasadas</p>
-                <p class="text-4xl font-bold mt-2 <?= $total_atrasados > 0 ? 'text-red-600 animate-pulse' : 'text-gray-800' ?>">
-                    <i class="bi bi-exclamation-triangle-fill mr-2"></i> <?= $total_atrasados ?>
-                </p>
-            </button>
-            <div class="bg-white rounded-lg shadow p-5">
-                <p class="text-gray-500 text-sm font-bold uppercase">Peças na Rua</p>
-                <p class="text-4xl font-bold text-gray-800 mt-2"><?= $pecas_fora ?: 0 ?></p>
-            </div>
-        </div>
-
-        <h2 class="text-xl font-bold text-gray-800 mb-4">Ações Rápidas</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-20">
-            <a href="condicionais_criar.php" class="bg-green-600 hover:bg-green-700 text-white p-6 rounded-lg shadow text-center"><span class="block text-2xl mb-2"><i class="bi bi-bag-plus-fill"></i></span><span class="font-bold">Nova Sacola</span></a>
-            <a href="produtos_listar.php?abrirModal=true" class="bg-roxo-base hover:bg-purple-700 text-white p-6 rounded-lg shadow text-center"><span class="block text-2xl mb-2"><i class="bi bi-box-seam-fill"></i></span><span class="font-bold">Cadastrar Produto</span></a>
-            <a href="clientes_lista.php" class="bg-blue-600 hover:bg-blue-700 text-white p-6 rounded-lg shadow text-center"><span class="block text-2xl mb-2"><i class="bi bi-person-plus-fill"></i></span><span class="font-bold">Novo Cliente</span></a>
-            <a href="condicionais_lista.php" class="bg-gray-700 hover:bg-gray-800 text-white p-6 rounded-lg shadow text-center"><span class="block text-2xl mb-2"><i class="bi bi-list-task"></i></span><span class="font-bold">Ver Condicionais</span></a>
-        </div>
+        </main>
     </div>
 
     <div id="modalLucro" class="fixed inset-0 bg-black bg-opacity-70 hidden flex items-center justify-center z-50 p-4">
@@ -190,8 +254,7 @@ try {
                                 <th class="py-2 px-3 text-center text-xs font-medium text-gray-500 uppercase">Ação</th>
                             </tr>
                         </thead>
-                        <tbody id="listaSacolasAtrasadas" class="divide-y divide-gray-200">
-                            </tbody>
+                        <tbody id="listaSacolasAtrasadas" class="divide-y divide-gray-200"></tbody>
                     </table>
                 </div>
             </div>
@@ -228,16 +291,17 @@ try {
         btnFiltrarLucro.addEventListener('click', carregarGrafico);
         modalLucro.addEventListener('click', (e) => { if (e.target === modalLucro) btnFecharLucro.click(); });
 
-        // --- CÓDIGO DO MODAL DE SACOLAS ATRASADAS ---
+        // Modal Atrasados
         const modalAtrasados = document.getElementById('modalAtrasados');
         const btnAbrirAtrasados = document.getElementById('abrirModalAtrasados');
         const btnFecharAtrasados = document.getElementById('fecharModalAtrasados');
         const corpoTabelaAtrasados = document.getElementById('listaSacolasAtrasadas');
+
         function formatarData(dataISO) {
-            const dataApenas = dataISO.split(' ')[0];
-            const [ano, mes, dia] = dataApenas.split('-');
+            const [ano, mes, dia] = dataISO.split(' ')[0].split('-');
             return `${dia}/${mes}/${ano}`;
         }
+
         async function carregarSacolasAtrasadas() {
             corpoTabelaAtrasados.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-gray-500">Carregando...</td></tr>';
             try {
@@ -245,7 +309,7 @@ try {
                 if (!response.ok) throw new Error('Falha ao buscar dados');
                 const sacolas = await response.json();
                 if (sacolas.length === 0) {
-                    corpoTabelaAtrasados.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-gray-500">Nenhuma sacola em aberto!</td></tr>';
+                    corpoTabelaAtrasados.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-gray-500">Nenhuma sacola atrasada.</td></tr>';
                     return;
                 }
                 corpoTabelaAtrasados.innerHTML = '';
@@ -257,22 +321,13 @@ try {
                             <td class="py-3 px-3 text-sm font-medium text-gray-900">#${sacola.id}</td>
                             <td class="py-3 px-3 text-sm text-gray-700">${sacola.cliente_nome}</td>
                             <td class="py-3 px-3 text-sm text-gray-700">${formatarData(sacola.data_prevista_retorno)}</td>
-                            <td class="py-3 px-3 text-xs">
-                                <span class="${statusClass} font-bold py-1 px-2 rounded-full">
-                                    ${sacola.status_real}
-                                </span>
-                            </td>
-                            <td class="py-3 px-3 text-center">
-                                <a href="condicionais_baixar.php?id=${sacola.id}" class="bg-roxo-base text-white py-1 px-3 rounded text-xs font-bold hover:bg-purple-700">
-                                    Resolver
-                                </a>
-                            </td>
-                        </tr>
-                    `;
+                            <td class="py-3 px-3 text-xs"><span class="${statusClass} font-bold py-1 px-2 rounded-full">${sacola.status_real}</span></td>
+                            <td class="py-3 px-3 text-center"><a href="condicionais_baixar.php?id=${sacola.id}" class="bg-roxo-base text-white py-1 px-3 rounded text-xs font-bold hover:bg-purple-700">Resolver</a></td>
+                        </tr>`;
                     corpoTabelaAtrasados.innerHTML += linhaHTML;
                 });
             } catch (error) {
-                console.error("Erro ao buscar sacolas:", error);
+                console.error("Erro:", error);
                 corpoTabelaAtrasados.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-red-500">Erro ao carregar dados.</td></tr>';
             }
         }
@@ -280,5 +335,7 @@ try {
         btnFecharAtrasados.addEventListener('click', () => { modalAtrasados.classList.add('hidden'); corpoTabelaAtrasados.innerHTML = ''; });
         modalAtrasados.addEventListener('click', (e) => { if (e.target === modalAtrasados) btnFecharAtrasados.click(); });
     </script>
+
+    <?php include 'toast_handler.php'; ?>
 </body>
 </html>

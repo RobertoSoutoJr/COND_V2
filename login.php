@@ -1,48 +1,6 @@
 <?php
 // Inicia a sessão para poder CRIAR o "crachá" se o login for bem-sucedido
 session_start();
-require_once 'conexao.php';
-
-$erro_login = '';
-
-// Verifica se o formulário foi enviado
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (empty($_POST['login']) || empty($_POST['senha'])) {
-        $erro_login = "Por favor, preencha o login e a senha.";
-    } else {
-        $login = $_POST['login'];
-        $senha_pura = $_POST['senha'];
-
-        try {
-            // 1. Busca o usuário no banco pelo login
-            $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE login = ?");
-            $stmt->execute([$login]);
-            $usuario = $stmt->fetch();
-
-
-            // 2. Verifica se o usuário existe E se a senha está correta
-            // password_verify() compara a senha pura com o HASH salvo no banco
-            if ($usuario && password_verify($senha_pura, $usuario['senha'])) {
-
-                // 3. SUCESSO! Armazena os dados no "crachá" (Sessão)
-                $_SESSION['usuario_id'] = $usuario['id'];
-                $_SESSION['usuario_nome'] = $usuario['nome'];
-                $_SESSION['usuario_foto'] = $usuario['foto']; // Ex: 'ana.png'
-                $_SESSION['usuario_nivel'] = $usuario['nivel']; // GUARDA O NÍVEL (admin ou usuario)
-
-                // 4. Redireciona para o Dashboard
-                header("Location: index.php");
-                exit;
-            } else {
-                // 5. Falha
-                $erro_login = "Login ou senha inválidos.";
-            }
-
-        } catch (PDOException $e) {
-            $erro_login = "Erro no banco de dados: " . $e->getMessage();
-        }
-    }
-}
 
 // Se o usuário já está logado e tentar acessar o login.php, manda ele pro index.
 if (isset($_SESSION['usuario_id'])) {
@@ -53,77 +11,300 @@ if (isset($_SESSION['usuario_id'])) {
 // Pega mensagens da URL (ex: ?erro=Acesso negado)
 $erro_url = $_GET['erro'] ?? '';
 $msg_url = $_GET['msg'] ?? '';
+
+// Se houver mensagens de erro ou sucesso na URL, vamos exibi-las na nova tela
+// A nova tela usa JavaScript para exibir notificações.
+// Vamos criar um script PHP para injetar essas mensagens no JS.
+$notificacao_js = '';
+if (!empty($erro_url)) {
+    $notificacao_js = "showNotification('".htmlspecialchars($erro_url)."', 'error', 5000);";
+} elseif (!empty($msg_url)) {
+    $notificacao_js = "showNotification('".htmlspecialchars($msg_url)."', 'success', 5000);";
+}
+
+// O arquivo auth_api.php vai lidar com a lógica de login/registro via AJAX.
+// O arquivo login.php agora é apenas a interface.
 ?>
-
 <!DOCTYPE html>
-<html lang="pt-br">
-
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Login - Sistema Condicional</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = { theme: { extend: { colors: { 'roxo-base': '#6753d8' } } } }
-    </script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GROF - Login & Cadastro</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/login.css">
 </head>
+<body>
+    <div class="notification-container" id="notificationContainer"></div>
 
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
-
-    <div class="w-full max-w-md bg-white rounded-lg shadow-xl p-8 mx-4">
-
-        <div class="flex justify-center mb-6">
-            <img src="img/cond_logo.png" alt="Logo COND" class="h-32 w-32">
+    <div class="container">
+        <!-- Animação de fundo -->
+        <div class="background-animation">
+            <div class="floating-element"></div>
+            <div class="floating-element"></div>
+            <div class="floating-element"></div>
+            <div class="floating-element"></div>
+            <div class="floating-element"></div>
         </div>
 
-        <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Controle de Condicionais</h2>
-
-        <?php if (!empty($erro_login)): ?>
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-sm">
-                <?= htmlspecialchars($erro_login) ?>
-            </div>
-        <?php endif; ?>
-        <?php if (!empty($erro_url)): ?>
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-sm">
-                <?= htmlspecialchars($erro_url) ?>
-            </div>
-        <?php endif; ?>
-        <?php if (!empty($msg_url)): ?>
-            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 text-sm">
-                <?= htmlspecialchars($msg_url) ?>
-            </div>
-        <?php endif; ?>
-
-
-        <form method="POST" action="login.php">
-            <div class="mb-4">
-                <label class="block text-gray-700 text-sm font-bold mb-2" for="login">
-                    <i class="bi bi-person-fill"></i> Login
-                </label>
-                <input
-                    class="shadow appearance-none border rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-roxo-base"
-                    id="login" name="login" type="text" placeholder="Seu usuário" required>
+        <!-- Card principal -->
+        <div class="auth-card" id="authCard">
+            <div class="logo-container">
+                <div class="logo-wrapper">
+                    <!-- Usando a nova imagem de logo (condSfundo.png não existe no COND2, vou usar cond_logo.png) -->
+                    <img src="img/cond_logo.png" alt="Logo COND" class="logo">
+                </div>
             </div>
 
-            <div class="mb-6">
-                <label class="block text-gray-700 text-sm font-bold mb-2" for="senha">
-                    <i class="bi bi-lock-fill"></i> Senha
-                </label>
-                <input
-                    class="shadow appearance-none border rounded w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline focus:border-roxo-base"
-                    id="senha" name="senha" type="password" placeholder="******************" required>
-            </div>
-
-            <div class="flex items-center justify-between">
-                <button
-                    class="w-full bg-roxo-base hover:bg-purple-700 text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition duration-300"
-                    type="submit">
-                    Entrar
+            <!-- Abas de navegação -->
+            <div class="tabs-container">
+                <button class="tab-btn active" data-tab="login" id="loginTabBtn">
+                    <i class="bi bi-box-arrow-in-right"></i>
+                    <span>Entrar</span>
+                </button>
+                <button class="tab-btn" data-tab="register" id="registerTabBtn">
+                    <i class="bi bi-person-plus"></i>
+                    <span>Cadastro</span>
                 </button>
             </div>
-        </form>
+
+            <!-- Conteúdo das abas -->
+            <div class="tabs-content">
+                <div class="tab-content active" id="loginTab">
+                    <!-- O action do formulário será tratado via JS (AJAX) -->
+                    <form id="loginForm" class="auth-form">
+                        <div class="form-group">
+                            <div class="input-wrapper">
+                                <input 
+                                    type="text" 
+                                    id="loginUsuario" 
+                                    name="usuario" 
+                                    required
+                                    placeholder=" "
+                                >
+                                <label for="loginUsuario">
+                                    <i class="bi bi-person"></i>
+                                    Usuário
+                                </label>
+                                <div class="input-underline"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="input-wrapper">
+                                <input 
+                                    type="password" 
+                                    id="loginSenha" 
+                                    name="senha" 
+                                    required
+                                    placeholder=" "
+                                >
+                                <label for="loginSenha">
+                                    <i class="bi bi-lock"></i>
+                                    Senha
+                                </label>
+                                <button type="button" class="toggle-password" id="toggleLoginPassword">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <div class="input-underline"></div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="submit-btn" id="loginBtn">
+                            <span class="btn-text">Entrar</span>
+                            <span class="btn-loader">
+                                <i class="bi bi-arrow-repeat"></i>
+                            </span>
+                        </button>
+
+                        <div class="form-footer">
+                            <a href="#" class="forgot-password">Esqueceu a senha?</a>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="tab-content" id="registerTab">
+                    <!-- O action do formulário será tratado via JS (AJAX) -->
+                    <form id="registerForm" class="auth-form">
+                        <div class="form-group">
+                            <div class="input-wrapper">
+                                <input 
+                                    type="text" 
+                                    id="registerNome" 
+                                    name="nome" 
+                                    required
+                                    placeholder=" "
+                                >
+                                <label for="registerNome">
+                                    <i class="bi bi-person-badge"></i>
+                                    Nome Completo
+                                </label>
+                                <div class="input-underline"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="input-wrapper">
+                                <input 
+                                    type="email" 
+                                    id="registerEmail" 
+                                    name="email" 
+                                    required
+                                    placeholder=" "
+                                >
+                                <label for="registerEmail">
+                                    <i class="bi bi-envelope"></i>
+                                    Email
+                                </label>
+                                <div class="input-underline"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="input-wrapper">
+                                <input 
+                                    type="text" 
+                                    id="registerUsuario" 
+                                    name="usuario" 
+                                    required
+                                    placeholder=" "
+                                >
+                                <label for="registerUsuario">
+                                    <i class="bi bi-at"></i>
+                                    Usuário
+                                </label>
+                                <div class="input-underline"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="input-wrapper">
+                                <input 
+                                    type="password" 
+                                    id="registerSenha" 
+                                    name="senha" 
+                                    required
+                                    placeholder=" "
+                                >
+                                <label for="registerSenha">
+                                    <i class="bi bi-lock"></i>
+                                    Senha
+                                </label>
+                                <button type="button" class="toggle-password" id="toggleRegisterPassword">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <div class="input-underline"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="input-wrapper">
+                                <input 
+                                    type="password" 
+                                    id="registerConfirmSenha" 
+                                    name="confirmSenha" 
+                                    required
+                                    placeholder=" "
+                                >
+                                <label for="registerConfirmSenha">
+                                    <i class="bi bi-lock-fill"></i>
+                                    Confirmar Senha
+                                </label>
+                                <button type="button" class="toggle-password" id="toggleRegisterConfirmPassword">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <div class="input-underline"></div>
+                            </div>
+                        </div>
+
+                        <div class="password-requirements">
+                            <p class="requirements-title">Requisitos da senha:</p>
+                            <ul>
+                                <li id="req-length">
+                                    <i class="bi bi-circle"></i>
+                                    Mínimo 8 caracteres
+                                </li>
+                                <li id="req-uppercase">
+                                    <i class="bi bi-circle"></i>
+                                    Uma letra maiúscula
+                                </li>
+                                <li id="req-number">
+                                    <i class="bi bi-circle"></i>
+                                    Um número
+                                </li>
+                                <li id="req-special">
+                                    <i class="bi bi-circle"></i>
+                                    Um caractere especial (!@#$%^&*)
+                                </li>
+                            </ul>
+                        </div>
+
+                        <button type="submit" class="submit-btn" id="registerBtn">
+                            <span class="btn-text">Criar Conta</span>
+                            <span class="btn-loader">
+                                <i class="bi bi-arrow-repeat"></i>
+                            </span>
+                        </button>
+
+                        <div class="form-footer">
+                            <p>Já tem uma conta? <a href="#" class="switch-tab" data-tab="login">Faça login</a></p>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="auth-footer">
+                <p>&copy; 2025 Cond - Gestão de Condicionais</p>
+            </div>
+        </div>
     </div>
 
+    <script>
+        // Variável global para o caminho da API, que será usada no login.js
+        const API_URL = 'auth_api.php';
+        
+        // Função de notificação (precisa ser definida antes de ser chamada)
+        function showNotification(message, type = 'info', duration = 5000) {
+            const container = document.getElementById('notificationContainer');
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            
+            let icon = '';
+            switch(type) {
+                case 'error':
+                    icon = '<i class="bi bi-exclamation-triangle-fill"></i>';
+                    break;
+                case 'success':
+                    icon = '<i class="bi bi-check-circle-fill"></i>';
+                    break;
+                case 'info':
+                    icon = '<i class="bi bi-info-circle-fill"></i>';
+                    break;
+                case 'warning':
+                    icon = '<i class="bi bi-exclamation-circle-fill"></i>';
+                    break;
+            }
+            
+            notification.innerHTML = `${icon}<span>${message}</span>`;
+            container.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 100);
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 400);
+            }, duration);
+        }
+        
+        // Injeta a notificação da URL, se houver
+        <?php echo $notificacao_js; ?>
+    </script>
+    <script src="js/login.js"></script>
 </body>
-
 </html>

@@ -1,149 +1,153 @@
 <?php
-// REMOVEMOS O session_start() DAQUI.
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 $pagina_atual = basename($_SERVER['PHP_SELF']);
 
-function checkAtivo($pagina, $pagina_atual)
-{
-    if ($pagina == $pagina_atual)
-        return "bg-purple-900 text-white";
-    return "text-purple-100 hover:bg-purple-700 hover:text-white";
+// Função para estilo do link
+function checkAtivo($pagina, $pagina_atual) {
+    if ($pagina == $pagina_atual) {
+        return "bg-white bg-opacity-20 text-white border-l-4 border-white"; 
+    }
+    return "text-purple-100 hover:bg-purple-700 hover:text-white hover:bg-opacity-50";
 }
 
-// Pega os dados da Sessão (com verificação para evitar erros)
-$usuario_id_logado = $_SESSION['usuario_id'] ?? null;
 $usuario_nome = $_SESSION['usuario_nome'] ?? 'Visitante';
 $usuario_foto = $_SESSION['usuario_foto'] ?? null;
 $usuario_nivel = $_SESSION['usuario_nivel'] ?? null;
 
-// Caminho da foto
 $caminho_foto_perfil = 'uploads/usuarios/' . $usuario_foto;
 if (!file_exists($caminho_foto_perfil) || empty($usuario_foto)) {
     $caminho_foto_perfil = 'img/default_avatar.png';
 }
 ?>
 
-<nav class="bg-roxo-base shadow-lg relative z-50">
-    <div class="container mx-auto px-4">
-        <div class="flex justify-between items-center">
+<div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden md:hidden" onclick="toggleSidebar()"></div>
 
-            <div class="flex space-x-4">
-                <a href="index.php" class="flex items-center py-3 px-2">
-                    <img src="<?= $caminho_foto_perfil ?>" alt="Foto Perfil"
-                        class="h-9 w-9 rounded-full object-cover mr-3 border-2 border-purple-300">
-                    <span class="font-bold text-white text-lg"><?= htmlspecialchars($usuario_nome) ?></span>
-                </a>
-
-                <div class="hidden md:flex items-center space-x-1">
-                    <a href="index.php"
-                        class="py-4 px-4 font-semibold transition <?= checkAtivo('index.php', $pagina_atual) ?>"><i
-                            class="bi bi-house-door-fill mr-1"></i> Início</a>
-
-                    <a href="condicionais_lista.php"
-                        class="py-4 px-4 font-semibold transition <?= checkAtivo('condicionais_lista.php', $pagina_atual) ?>"><i
-                            class="bi bi-bag-check-fill mr-1"></i> Sacolas</a>
-
-                    <a href="condicionais_pedidos.php"
-                        class="py-4 px-4 font-semibold transition <?= checkAtivo('condicionais_pedidos.php', $pagina_atual) ?>">
-                        <i class="bi bi-grid-fill mr-1"></i> Catálogo
-                    </a>
-
-                    <a href="clientes_lista.php"
-                        class="py-4 px-4 font-semibold transition <?= checkAtivo('clientes_lista.php', $pagina_atual) ?>"><i
-                            class="bi bi-people-fill mr-1"></i> Clientes</a>
-                    <a href="produtos_listar.php"
-                        class="py-4 px-4 font-semibold transition <?= checkAtivo('produtos_listar.php', $pagina_atual) ?>"><i
-                            class="bi bi-box-seam-fill mr-1"></i> Estoque</a>
-
-                    <div class="relative group">
-                        <?php
-                        $is_relatorio_ativo = ($pagina_atual == 'relatorio_vendas.php' || $pagina_atual == 'relatorio_inventario.php');
-                        $classe_ativo_relatorio = $is_relatorio_ativo ? 'bg-purple-900 text-white' : 'text-purple-100 hover:bg-purple-700 hover:text-white';
-                        ?>
-                        <button
-                            class="py-4 px-4 font-semibold transition flex items-center <?= $classe_ativo_relatorio ?>">
-                            <i class="bi bi-graph-up mr-1"></i> Relatórios <i
-                                class="bi bi-chevron-down text-xs ml-1 transition-transform group-hover:rotate-180"></i>
-                        </button>
-                        <div
-                            class="absolute hidden group-hover:block bg-white shadow-lg rounded-b-md z-50 w-56 top-full left-0">
-                            <a href="relatorio_vendas.php"
-                                class="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 hover:text-roxo-base font-medium"><i
-                                    class="bi bi-graph-up-arrow mr-2 text-roxo-base"></i>Relatório de Vendas</a>
-                            <a href="relatorio_inventario.php"
-                                class="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 hover:text-roxo-base font-medium"><i
-                                    class="bi bi-archive-fill mr-2 text-roxo-base"></i>Relatório de Estoque</a>
-                        </div>
-                    </div>
-
-                    <?php if ($usuario_nivel == 'admin'): ?>
-                        <a href="usuarios_lista.php"
-                            class="py-4 px-4 font-semibold transition <?= checkAtivo('usuarios_lista.php', $pagina_atual) ?>"><i
-                                class="bi bi-shield-lock-fill mr-1"></i> Admin</a>
-                    <?php endif; ?>
-                </div>
-            </div>
-
-            <div class="hidden md:flex items-center space-x-3">
-                <a href="perfil_editar.php"
-                    class="py-2 px-3 font-semibold text-purple-200 hover:bg-purple-700 hover:text-white transition rounded"
-                    title="Editar meu perfil">
-                    <i class="bi bi-gear-fill text-lg"></i>
-                </a>
-                <a href="logout.php"
-                    class="py-2 px-3 font-semibold text-purple-200 hover:bg-red-600 hover:text-white transition rounded"
-                    title="Sair">
-                    <i class="bi bi-box-arrow-right text-lg"></i>
-                </a>
-            </div>
-
-            <div class="md:hidden flex items-center">
-                <button id="hamburger-button" class="text-white p-2 focus:outline-none hover:text-purple-200">
-                    <i class="bi bi-list text-3xl"></i>
-                </button>
-            </div>
+<aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-roxo-base text-white transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-xl flex flex-col h-screen">
+    
+    <div class="p-6 border-b border-purple-500 flex items-center justify-center">
+        <div class="flex items-center space-x-3">
+            <img src="img/cond_logo.png" alt="Logo" class="h-10 w-10 bg-white rounded-full p-1">
+            <span class="text-2xl font-bold tracking-wider">COND</span>
         </div>
+        <button onclick="toggleSidebar()" class="md:hidden absolute right-4 text-white focus:outline-none">
+            <i class="bi bi-x-lg text-2xl"></i>
+        </button>
+    </div>
 
-        <div id="mobile-menu" class="hidden md:hidden pb-3">
-            <div class="px-4 py-3 border-b border-purple-500">
-                <span class="text-white font-bold text-lg">
-                    <?php echo $titulo_pagina ?? 'Menu'; ?>
-                </span>
-            </div>
-            <a href="index.php"
-                class="block py-2 px-4 text-sm text-purple-100 hover:bg-purple-700 hover:text-white rounded">Início</a>
-            <a href="condicionais_lista.php"
-                class="block py-2 px-4 text-sm text-purple-100 hover:bg-purple-700 hover:text-white rounded">Sacolas</a>
-            <a href="condicionais_pedidos.php"
-                class="block py-2 px-4 text-sm text-purple-100 hover:bg-purple-700 hover:text-white rounded">Catálogo</a>
-            <a href="clientes_lista.php"
-                class="block py-2 px-4 text-sm text-purple-100 hover:bg-purple-700 hover:text-white rounded">Clientes</a>
-            <a href="produtos_listar.php"
-                class="block py-2 px-4 text-sm text-purple-100 hover:bg-purple-700 hover:text-white rounded">Estoque</a>
-            <a href="relatorio_vendas.php"
-                class="block py-2 px-4 text-sm text-purple-100 hover:bg-purple-700 hover:text-white rounded">Relatório
-                de Vendas</a>
-            <a href="relatorio_inventario.php"
-                class="block py-2 px-4 text-sm text-purple-100 hover:bg-purple-700 hover:text-white rounded">Relatório
-                de Estoque</a>
-            <?php if ($usuario_nivel == 'admin'): ?>
-                <a href="usuarios_lista.php"
-                    class="block py-2 px-4 text-sm text-purple-100 hover:bg-purple-700 hover:text-white rounded">Admin</a>
-            <?php endif; ?>
-            <hr class="border-purple-500 my-2">
-            <a href="perfil_editar.php"
-                class="block py-2 px-4 text-sm text-purple-100 hover:bg-purple-700 hover:text-white rounded">Meu
-                Perfil</a>
-            <a href="logout.php"
-                class="block py-2 px-4 text-sm text-red-300 hover:bg-red-600 hover:text-white rounded">Sair</a>
+    <div class="p-6 flex items-center space-x-3 border-b border-purple-500 bg-purple-800 bg-opacity-30">
+        <img src="<?= $caminho_foto_perfil ?>" class="h-12 w-12 rounded-full object-cover border-2 border-white">
+        <div class="overflow-hidden">
+            <p class="text-sm font-bold truncate"><?= htmlspecialchars($usuario_nome) ?></p>
+            <p class="text-xs text-purple-200 uppercase tracking-wide"><?= $usuario_nivel ?></p>
         </div>
     </div>
 
-    <script>
-        const hamburgerBtn = document.getElementById('hamburger-button');
-        const mobileMenu = document.getElementById('mobile-menu');
-        hamburgerBtn.addEventListener('click', () => {
-            mobileMenu.classList.toggle('hidden');
-        });
-    </script>
-</nav>
+    <nav class="flex-1 overflow-y-auto py-4 scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-transparent">
+        <ul class="space-y-1">
+            
+            <li class="px-6 py-2 text-xs font-bold text-purple-300 uppercase tracking-wider">Principal</li>
+            <li>
+                <a href="index.php" class="flex items-center px-6 py-3 transition <?= checkAtivo('index.php', $pagina_atual) ?>">
+                    <i class="bi bi-grid-1x2-fill mr-3 text-lg"></i> Dashboard
+                </a>
+            </li>
+            <li>
+                <a href="condicionais_lista.php" class="flex items-center px-6 py-3 transition <?= checkAtivo('condicionais_lista.php', $pagina_atual) ?>">
+                    <i class="bi bi-bag-check-fill mr-3 text-lg"></i> Sacolas
+                </a>
+            </li>
+            <li>
+                <a href="condicionais_pedidos.php" class="flex items-center px-6 py-3 transition <?= checkAtivo('condicionais_pedidos.php', $pagina_atual) ?>">
+                    <i class="bi bi-images mr-3 text-lg"></i> Catálogo
+                </a>
+            </li>
+
+            <li class="px-6 py-2 mt-4 text-xs font-bold text-purple-300 uppercase tracking-wider">Gestão</li>
+            <li>
+                <a href="clientes_lista.php" class="flex items-center px-6 py-3 transition <?= checkAtivo('clientes_lista.php', $pagina_atual) ?>">
+                    <i class="bi bi-people-fill mr-3 text-lg"></i> Clientes
+                </a>
+            </li>
+            <li>
+                <a href="produtos_listar.php" class="flex items-center px-6 py-3 transition <?= checkAtivo('produtos_listar.php', $pagina_atual) ?>">
+                    <i class="bi bi-box-seam-fill mr-3 text-lg"></i> Estoque
+                </a>
+            </li>
+            <li>
+                <a href="fornecedores_lista.php" class="flex items-center px-6 py-3 transition <?= checkAtivo('fornecedores_lista.php', $pagina_atual) ?>">
+                    <i class="bi bi-truck mr-3 text-lg"></i> Fornecedores
+                </a>
+            </li>
+             <li>
+                <a href="entradas_lista.php" class="flex items-center px-6 py-3 transition <?= checkAtivo('entradas_lista.php', $pagina_atual) ?>">
+                    <i class="bi bi-arrow-down-square-fill mr-3 text-lg"></i> Entradas
+                </a>
+            </li>
+
+            <li class="px-6 py-2 mt-4 text-xs font-bold text-purple-300 uppercase tracking-wider">Financeiro</li>
+            <li>
+                <a href="contas_a_receber_lista.php" class="flex items-center px-6 py-3 transition <?= checkAtivo('contas_a_receber_lista.php', $pagina_atual) ?>">
+                    <i class="bi bi-wallet2 mr-3 text-lg"></i> A Receber
+                </a>
+            </li>
+            <li>
+                <a href="relatorio_vendas.php" class="flex items-center px-6 py-3 transition <?= checkAtivo('relatorio_vendas.php', $pagina_atual) ?>">
+                    <i class="bi bi-graph-up-arrow mr-3 text-lg"></i> Rel. Vendas
+                </a>
+            </li>
+            <li>
+                <a href="relatorio_condicionais.php" class="flex items-center px-6 py-3 transition <?= checkAtivo('relatorio_condicionais.php', $pagina_atual) ?>">
+                    <i class="bi bi-bag-plus-fill mr-3 text-lg"></i> Rel. Sacolas
+                </a>
+            </li>
+            <li>
+                <a href="relatorio_top_clientes.php" class="flex items-center px-6 py-3 transition <?= checkAtivo('relatorio_top_clientes.php', $pagina_atual) ?>">
+                    <i class="bi bi-trophy-fill mr-3 text-lg"></i> Top Clientes
+                </a>
+            </li>
+            <li>
+                <a href="relatorio_inventario.php" class="flex items-center px-6 py-3 transition <?= checkAtivo('relatorio_inventario.php', $pagina_atual) ?>">
+                    <i class="bi bi-archive-fill mr-3 text-lg"></i> Rel. Estoque
+                </a>
+            </li>
+
+            <?php if ($usuario_nivel == 'admin'): ?>
+                <li class="px-6 py-2 mt-4 text-xs font-bold text-purple-300 uppercase tracking-wider">Sistema</li>
+                <li>
+                    <a href="usuarios_lista.php" class="flex items-center px-6 py-3 transition <?= checkAtivo('usuarios_lista.php', $pagina_atual) ?>">
+                        <i class="bi bi-shield-lock-fill mr-3 text-lg"></i> Admin
+                    </a>
+                </li>
+            <?php endif; ?>
+        </ul>
+    </nav>
+
+    <div class="p-4 border-t border-purple-500 bg-roxo-base">
+        <div class="flex justify-between items-center">
+            <a href="perfil_editar.php" class="text-sm hover:text-white text-purple-200 transition flex items-center">
+                <i class="bi bi-gear-fill mr-2"></i> Config
+            </a>
+            <a href="logout.php" class="text-sm hover:text-red-300 text-purple-200 transition flex items-center">
+                Sair <i class="bi bi-box-arrow-right ml-2"></i>
+            </a>
+        </div>
+    </div>
+</aside>
+
+<script>
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        
+        if (sidebar.classList.contains('-translate-x-full')) {
+            sidebar.classList.remove('-translate-x-full');
+            overlay.classList.remove('hidden');
+        } else {
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('hidden');
+        }
+    }
+</script>

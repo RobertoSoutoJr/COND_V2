@@ -1,36 +1,45 @@
-<?php require_once 'auth_check.php'; ?>
 <?php
+require_once 'auth_check.php';
 require_once 'conexao.php';
 
+// Variáveis para o redirecionamento
+$msg = '';
+$type = '';
+
 if (isset($_GET['id'])) {
-    $id = $_GET['id'];
+    $id = (int)$_GET['id'];
 
     try {
         // 1. Verifica se o cliente tem histórico (Condicionais)
+        // Regra de Negócio: Não podemos apagar clientes que já compraram/pegaram sacolas
         $stmt = $pdo->prepare("SELECT COUNT(*) FROM condicionais WHERE cliente_id = ?");
         $stmt->execute([$id]);
         $historico = $stmt->fetchColumn();
 
         if ($historico > 0) {
-            // Se tiver histórico, proíbe a exclusão
-            echo "<script>
-                alert('Não é possível excluir este cliente pois ele possui histórico de condicionais. Apenas a edição é permitida.');
-                window.location.href = 'clientes_lista.php';
-            </script>";
-            exit;
+            // ERRO: Tem histórico
+            $msg = "Não é possível excluir: Este cliente possui histórico de sacolas registradas.";
+            $type = "error";
+        } else {
+            // SUCESSO: Não tem histórico, pode excluir
+            // O DELETE CASCADE do banco vai apagar o endereço automaticamente
+            $stmt = $pdo->prepare("DELETE FROM clientes WHERE id = ?");
+            $stmt->execute([$id]);
+
+            $msg = "Cliente excluído com sucesso!";
+            $type = "success";
         }
 
-        // 2. Se não tiver histórico, pode excluir
-        // Como configuramos ON DELETE CASCADE no banco, apagar o cliente apaga o endereço junto automaticamente.
-        $stmt = $pdo->prepare("DELETE FROM clientes WHERE id = ?");
-        $stmt->execute([$id]);
-
-        header("Location: clientes_lista.php?sucesso=excluido");
-
     } catch (PDOException $e) {
-        die("Erro ao excluir: " . $e->getMessage());
+        $msg = "Erro ao excluir: " . $e->getMessage();
+        $type = "error";
     }
 } else {
-    header("Location: clientes_lista.php");
+    $msg = "ID do cliente não fornecido.";
+    $type = "error";
 }
+
+// Redirecionamento único com a mensagem na URL (Padrão Toast)
+header("Location: clientes_lista.php?msg=" . urlencode($msg) . "&type=" . $type);
+exit;
 ?>

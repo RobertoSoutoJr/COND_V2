@@ -19,12 +19,11 @@ try {
     ");
     $stmt_cond->execute([$cond_id]);
     $condicional = $stmt_cond->fetch();
-    if (!$condicional)
-        die("Condicional não encontrado.");
+    if (!$condicional) die("Condicional não encontrado.");
 
-    // 2. Pega os Itens da Sacola (SEM fotos)
+    // 2. Pega os Itens da Sacola (COM STATUS)
     $stmt_itens = $pdo->prepare("
-        SELECT i.*, p.nome, p.tamanho, p.cor 
+        SELECT i.*, p.nome, p.tamanho, p.cor, i.status_item 
         FROM itens_condicional i
         JOIN produtos p ON i.produto_id = p.id
         WHERE i.condicional_id = ?
@@ -33,7 +32,7 @@ try {
     $itens = $stmt_itens->fetchAll();
 
 } catch (PDOException $e) {
-    die("Erro ao buscar dados: " + $e->getMessage());
+    die("Erro ao buscar dados: " . $e->getMessage());
 }
 ?>
 
@@ -52,22 +51,19 @@ try {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background: #f0f0f0;
+            background: #f3f4f6; /* bg-gray-100 */
             font-size: 12px;
-            /* Fonte base menor */
         }
 
         .recibo-container {
             width: 18cm;
-            /* Mais estreito que A4 (21cm) */
             min-height: 14cm;
-            /* Altura de meia folha A4 */
-            margin: 10px auto;
+            margin: 20px auto;
             padding: 20px;
-            /* Padding reduzido */
             border: 1px solid #eee;
             background: #fff;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border-radius: 0.5rem; /* rounded-lg */
         }
 
         .header-recibo {
@@ -76,26 +72,21 @@ try {
             align-items: flex-start;
             border-bottom: 2px solid #333;
             padding-bottom: 5px;
-            /* Reduzido */
         }
 
         .header-recibo img {
             max-height: 60px;
-            /* Reduzido */
         }
 
         .header-recibo h2 {
             margin: 0;
             font-size: 20px;
-            /* Reduzido */
         }
 
         .dados-cliente {
             margin-top: 15px;
-            /* Reduzido */
             border: 1px solid #ccc;
             padding: 10px;
-            /* Reduzido */
             background: #f9f9f9;
         }
 
@@ -113,17 +104,14 @@ try {
             width: 100%;
             border-collapse: collapse;
             margin-top: 15px;
-            /* Reduzido */
         }
 
         .tabela-itens th,
         .tabela-itens td {
             border: 1px solid #ccc;
             padding: 6px;
-            /* Reduzido */
             text-align: left;
             font-size: 11px;
-            /* Reduzido */
         }
 
         .tabela-itens th {
@@ -132,17 +120,13 @@ try {
 
         .footer-recibo {
             margin-top: 20px;
-            /* Reduzido */
             border-top: 1px solid #ccc;
             padding-top: 10px;
-            /* Reduzido */
             font-size: 13px;
-            /* Reduzido */
         }
 
         .termo {
             font-size: 9px;
-            /* Reduzido */
             color: #555;
             background: #f5f5f5;
             padding: 8px;
@@ -151,7 +135,6 @@ try {
 
         .assinatura {
             margin-top: 40px;
-            /* Reduzido */
             text-align: center;
         }
 
@@ -163,8 +146,7 @@ try {
         }
 
         .no-print {
-            text-align: center;
-            margin-bottom: 20px;
+            /* Apenas classes utilitárias aqui, sem estilo inline */
         }
 
         /* ESTILOS DE IMPRESSÃO */
@@ -172,7 +154,13 @@ try {
             body {
                 background: #fff;
             }
+            
+            /* Esconde Sidebar, Cabeçalho Mobile e Botões */
+            .no-print, #sidebar-wrapper, #mobile-header {
+                display: none !important;
+            }
 
+            /* Ajusta o container para ocupar a folha e remove margens */
             .recibo-container {
                 width: 100%;
                 min-height: 0;
@@ -181,10 +169,11 @@ try {
                 border: none;
                 box-shadow: none;
             }
-
-            .no-print {
-                display: none;
-                /* Esconde o botão */
+            
+            /* Reseta a margem esquerda que o layout sidebar cria */
+            .main-content {
+                margin-left: 0 !important;
+                padding: 0 !important;
             }
         }
     </style>
@@ -192,88 +181,143 @@ try {
 
 <body>
 
-    <div class="recibo-container">
+    <div id="sidebar-wrapper" class="no-print">
+        <?php include 'menu.php'; ?>
+    </div>
 
-        <div class="no-print">
-            <button onclick="window.print()"
-                class="bg-roxo-base text-white font-bold py-3 px-6 rounded shadow-lg transition hover:bg-purple-700">
-                <i class="bi bi-printer-fill mr-2"></i> Imprimir Recibo
+    <div class="md:ml-64 transition-all duration-300 flex flex-col min-h-screen main-content">
+
+        <div id="mobile-header" class="bg-white shadow-sm p-4 md:hidden flex justify-between items-center sticky top-0 z-30 no-print">
+            <span class="font-bold text-xl text-roxo-base">COND</span>
+            <button onclick="toggleSidebar()" class="text-gray-600 focus:outline-none">
+                <i class="bi bi-list text-3xl"></i>
             </button>
         </div>
 
-        <header class="header-recibo">
-            <div>
-                <h2>Recibo de Condicional #<?= $cond_id ?></h2>
-                <p>Status: <strong><?= $condicional['status'] ?></strong></p>
+        <main class="flex-1 p-4">
+            
+            <div class="mb-6 flex justify-between items-center max-w-4xl mx-auto no-print">
+                <a href="condicionais_lista.php" class="inline-flex items-center text-sm font-medium text-gray-500 hover:text-roxo-base transition-colors">
+                    <i class="bi bi-arrow-left mr-2"></i> Voltar para Lista
+                </a>
+                <button onclick="window.print()" class="bg-roxo-base text-white font-bold py-2 px-6 rounded-lg shadow-lg transition hover:bg-purple-700 flex items-center">
+                    <i class="bi bi-printer-fill mr-2"></i> Imprimir Recibo
+                </button>
             </div>
-            <img src="img/cond_logo.png" alt="Logo COND">
-        </header>
 
-        <section class="dados-cliente">
-            <h3>Dados do Cliente</h3>
-            <p><strong>Nome:</strong> <?= htmlspecialchars($condicional['nome']) ?></p>
-            <p><strong>CPF:</strong> <?= htmlspecialchars($condicional['cpf']) ?> | <strong>Telefone:</strong>
-                <?= htmlspecialchars($condicional['telefone']) ?></p>
-            <p><strong>Endereço:</strong> <?= htmlspecialchars($condicional['logradouro']) ?>,
-                <?= htmlspecialchars($condicional['numero']) ?> - <?= htmlspecialchars($condicional['bairro']) ?></p>
-        </section>
+            <div class="recibo-container">
 
-        <section class="footer-recibo">
-            <p><strong>Data de Retirada:</strong> <?= date('d/m/Y', strtotime($condicional['data_saida'])) ?></p>
-            <p><strong>DATA LIMITE DE DEVOLUÇÃO:</strong> <strong
-                    style="font-size: 16px; background: #eee; padding: 4px;"><?= date('d/m/Y', strtotime($condicional['data_prevista_retorno'])) ?></strong>
-            </p>
-        </section>
+                <header class="header-recibo">
+                    <div>
+                        <h2>Recibo de Condicional #<?= $cond_id ?></h2>
+                        <p>Status: <strong><?= $condicional['status'] ?></strong></p>
+                    </div>
+                    <img src="img/cond_logo.png" alt="Logo COND">
+                </header>
 
-        <main>
-            <table class="tabela-itens">
-                <thead>
-                    <tr>
-                        <th>Produto</th>
-                        <th>Tam/Cor</th>
-                        <th>Qtd.</th>
-                        <th>Valor Unit.</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    $total_pecas = 0;
-                    $total_valor = 0;
-                    foreach ($itens as $item):
-                        $total_pecas += $item['quantidade'];
-                        $total_valor += $item['preco_momento'] * $item['quantidade'];
-                        ?>
-                        <tr>
-                            <td><?= htmlspecialchars($item['nome']) ?></td>
-                            <td><?= htmlspecialchars($item['tamanho']) ?> / <?= htmlspecialchars($item['cor']) ?></td>
-                            <td><?= $item['quantidade'] ?></td>
-                            <td>R$ <?= number_format($item['preco_momento'], 2, ',', '.') ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-                <tfoot>
-                    <tr style="background: #eee; font-weight: bold;">
-                        <td colspan="2" style="text-align: right;">TOTAIS:</td>
-                        <td><?= $total_pecas ?> Peças</td>
-                        <td>R$ <?= number_format($total_valor, 2, ',', '.') ?></td>
-                    </tr>
-                </tfoot>
-            </table>
+                <section class="dados-cliente">
+                    <h3>Dados do Cliente</h3>
+                    <p><strong>Nome:</strong> <?= htmlspecialchars($condicional['nome']) ?></p>
+                    <p><strong>CPF:</strong> <?= htmlspecialchars($condicional['cpf']) ?> | <strong>Telefone:</strong>
+                        <?= htmlspecialchars($condicional['telefone']) ?></p>
+                    <p><strong>Endereço:</strong> <?= htmlspecialchars($condicional['logradouro']) ?>,
+                        <?= htmlspecialchars($condicional['numero']) ?> - <?= htmlspecialchars($condicional['bairro']) ?></p>
+                </section>
+
+                <section class="footer-recibo">
+                    <p><strong>Data de Retirada:</strong> <?= date('d/m/Y', strtotime($condicional['data_saida'])) ?></p>
+                    <p><strong>DATA LIMITE DE DEVOLUÇÃO:</strong> <strong
+                            style="font-size: 16px; background: #eee; padding: 4px;"><?= date('d/m/Y', strtotime($condicional['data_prevista_retorno'])) ?></strong>
+                    </p>
+                </section>
+
+                <main>
+                    <table class="tabela-itens">
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th>Tam/Cor</th>
+                                <th>Qtd.</th>
+                                <th>Valor Unit.</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
+                            $total_pecas_aberto = 0;
+                            $total_valor_aberto = 0;
+                            $total_pecas_vendido = 0;
+                            $total_valor_vendido = 0;
+                            $total_pecas_devolvido = 0;
+                            $total_valor_devolvido = 0;
+                            
+                            foreach ($itens as $item):
+                                $valor_item = $item['preco_momento'] * $item['quantidade'];
+                                
+                                if ($item['status_item'] == 'EM_CONDICIONAL') {
+                                    $total_pecas_aberto += $item['quantidade'];
+                                    $total_valor_aberto += $valor_item;
+                                } elseif ($item['status_item'] == 'VENDIDO') {
+                                    $total_pecas_vendido += $item['quantidade'];
+                                    $total_valor_vendido += $valor_item;
+                                } elseif ($item['status_item'] == 'DEVOLVIDO') {
+                                    $total_pecas_devolvido += $item['quantidade'];
+                                    $total_valor_devolvido += $valor_item;
+                                }
+                                ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($item['nome']) ?></td>
+                                    <td><?= htmlspecialchars($item['tamanho']) ?> / <?= htmlspecialchars($item['cor']) ?></td>
+                                    <td><?= $item['quantidade'] ?></td>
+                                    <td>R$ <?= number_format($item['preco_momento'], 2, ',', '.') ?></td>
+                                    <td><?= $item['status_item'] == 'EM_CONDICIONAL' ? 'Em Aberto' : ($item['status_item'] == 'VENDIDO' ? 'Vendido' : 'Devolvido') ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: #eee; font-weight: bold;">
+                                <td colspan="3" style="text-align: right;">Total em Aberto:</td>
+                                <td><?= $total_pecas_aberto ?> Peças</td>
+                                <td>R$ <?= number_format($total_valor_aberto, 2, ',', '.') ?></td>
+                                <td></td>
+                            </tr>
+                            <tr style="background: #e6ffe6; font-weight: bold;">
+                                <td colspan="3" style="text-align: right;">Total Vendido:</td>
+                                <td><?= $total_pecas_vendido ?> Peças</td>
+                                <td>R$ <?= number_format($total_valor_vendido, 2, ',', '.') ?></td>
+                                <td></td>
+                            </tr>
+                            <tr style="background: #e6f7ff; font-weight: bold;">
+                                <td colspan="3" style="text-align: right;">Total Devolvido:</td>
+                                <td><?= $total_pecas_devolvido ?> Peças</td>
+                                <td>R$ <?= number_format($total_valor_devolvido, 2, ',', '.') ?></td>
+                                <td></td>
+                            </tr>
+                            <tr style="background: #ccc; font-weight: bold;">
+                                <td colspan="3" style="text-align: right;">TOTAL GERAL:</td>
+                                <td><?= $total_pecas_aberto + $total_pecas_vendido + $total_pecas_devolvido ?> Peças</td>
+                                <td>R$ <?= number_format($total_valor_aberto + $total_valor_vendido + $total_valor_devolvido, 2, ',', '.') ?></td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </main>
+
+                <footer class="footer-recibo">
+                    <div class="termo">
+                        <strong>Termo de Responsabilidade:</strong> Declaro que retirei os produtos listados acima, os quais
+                        permanecem como propriedade da loja até a quitação ou devolução. Comprometo-me a devolvê-los até a data
+                        limite estipulada, sob pena de serem considerados como compra definitiva. Em caso de dano ou não
+                        devolução, autorizo a cobrança do valor total dos itens.
+                    </div>
+
+                    <div class="assinatura">
+                        <p>Assinatura do Cliente</p>
+                    </div>
+                </footer>
+
+            </div>
         </main>
-
-        <footer class="footer-recibo">
-            <div class="termo">
-                <strong>Termo de Responsabilidade:</strong> Declaro que retirei os produtos listados acima, os quais
-                permanecem como propriedade da loja até a quitação ou devolução. Comprometo-me a devolvê-los até a data
-                limite estipulada, sob pena de serem considerados como compra definitiva. Em caso de dano ou não
-                devolução, autorizo a cobrança do valor total dos itens.
-            </div>
-
-            <div class="assinatura">
-                <p>Assinatura do Cliente</p>
-            </div>
-        </footer>
-
     </div>
 
     <?php include 'toast_handler.php'; ?>
