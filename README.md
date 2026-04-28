@@ -1,107 +1,122 @@
-# 🛍️ COND - Sistema de Gestão de Condicionais (Mini-ERP)
+# 🛍️ COND — Sistema de Gestão de Condicionais (Mini-ERP)
 
-![PHP](https://img.shields.io/badge/PHP-777BB4?style=for-the-badge&logo=php&logoColor=white)
-![MySQL](https://img.shields.io/badge/MySQL-00000F?style=for-the-badge&logo=mysql&logoColor=white)
-![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![PHP](https://img.shields.io/badge/PHP-8.0+-777BB4?style=for-the-badge&logo=php&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
+![Tailwind](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwindcss&logoColor=white)
 ![Chart.js](https://img.shields.io/badge/Chart.js-FF6384?style=for-the-badge&logo=chartdotjs&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)
 
-## 📖 Sobre o Projeto
-
-O **COND** é um sistema web desenvolvido para automatizar e gerenciar o processo de vendas por consignação (conhecido como "condicional" ou "sacola") em lojas de vestuário. 
-
-Diferente de sistemas genéricos, o COND foca na integridade do estoque flutuante (produtos que saem da loja mas não foram vendidos) e na análise financeira precisa baseada em **Regime de Caixa**.
-
-O projeto foi construído com foco em **Segurança (Blindagem de Dados)**, **Usabilidade (UX Mobile-First)** e **Performance**.
+> Sistema web para automatizar e gerenciar vendas por **consignação** (sacolas) em lojas de vestuário, com foco em integridade de estoque flutuante e análise financeira em **regime de caixa**.
 
 ---
 
-## 🚀 Funcionalidades Principais
+## ✨ Destaques técnicos
 
-### 📦 Gestão de Estoque e Produtos
-* **CRUD Completo** com upload de fotos.
-* Controle de entrada de mercadorias e fornecedores.
-* Cálculo automático de **Margem de Lucro** e preço de custo.
-* **Blindagem:** Validação no servidor para impedir estoque ou preços negativos.
-
-### 🛍️ Fluxo de Condicional (Sacola)
-* Criação de sacolas com baixa automática de estoque.
-* Geração de **Recibo de Impressão** (A4) para assinatura do cliente.
-* Processamento de retorno com opções de **Venda** ou **Devolução** (retorno ao estoque).
-* Integração com **WhatsApp** para cobrança e envio de detalhes.
-
-### 📊 Inteligência de Negócio (Dashboard)
-* **KPIs em Tempo Real:** Lucro (30 dias), Valor na Rua, Top Clientes e Produtos.
-* **Gráficos Interativos:** Análise de lucro diário usando Chart.js.
-* **Relatórios Avançados:** Relatório de Vendas Detalhado e Balanço de Inventário.
-
-### 🛡️ Segurança e Acesso
-* Autenticação segura com senhas criptografadas (`password_hash`).
-* **Controle de Nível (RBAC):** Diferenciação entre Administrador e Usuário Padrão.
-* Proteção contra CSRF e SQL Injection (uso estrito de PDO Prepared Statements).
-
-### 📱 UX/UI Moderna
-* **Layout Responsivo:** Tabelas que se transformam em cards em dispositivos móveis.
-* **Sidebar:** Navegação lateral intuitiva.
-* **Notificações Toast:** Feedback visual não-intrusivo para todas as ações.
-* **Filtros em Tempo Real:** Busca instantânea em listas de clientes e produtos via JavaScript.
+- 🛡️ **Segurança:** PDO Prepared Statements, `password_hash`, controle CSRF, RBAC (admin/usuário)
+- 📊 **BI integrado:** KPIs em tempo real, lucro diário, top clientes/produtos via Chart.js
+- 📱 **Mobile-first:** tabelas viram cards no mobile, sidebar adaptativa, toasts não-intrusivos
+- 💬 **Integração WhatsApp:** envio de cobranças e detalhes da sacola
+- 🧾 **Recibo A4** para impressão e assinatura do cliente
 
 ---
 
-## 🛠️ Tecnologias Utilizadas
+## 🚀 Funcionalidades
 
-* **Backend:** PHP 8.x (Puro/Vanilla)
-* **Banco de Dados:** MySQL / MariaDB
-* **Frontend:** HTML5, Tailwind CSS (via CDN)
-* **Scripting:** JavaScript (Vanilla), Chart.js, Toastify.js
-* **Ícones:** Bootstrap Icons
+### 📦 Estoque & Produtos
+- CRUD com upload de fotos
+- Cálculo automático de margem de lucro
+- Validação server-side contra estoque/preço negativo
+
+### 🛍️ Fluxo de Condicional
+- Criação de sacola com baixa automática de estoque
+- Retorno: venda parcial/total ou devolução ao estoque
+- Geração de recibo imprimível (A4)
+
+### 📊 Dashboard & Relatórios
+- KPIs: lucro 30 dias, valor na rua, top clientes, top produtos
+- Gráficos interativos (lucro diário)
+- Relatórios de vendas detalhadas e balanço de inventário
+
+### 🛡️ Segurança
+- Autenticação com `password_hash`
+- RBAC (Administrador / Usuário Padrão)
+- Proteção CSRF + SQL Injection (PDO)
 
 ---
 
-## ⚙️ Como Executar o Projeto
+## 🛠️ Stack
+
+| Camada | Tecnologia |
+|--------|-----------|
+| Backend | PHP 8.x (Vanilla) |
+| Banco | MySQL / MariaDB |
+| Frontend | HTML5 + Tailwind CSS |
+| Scripts | JavaScript Vanilla, Chart.js, Toastify.js |
+| Ícones | Bootstrap Icons |
+
+---
+
+## ⚙️ Como executar
 
 ### Pré-requisitos
-* Um servidor web local (XAMPP, Laragon, Docker, etc.).
-* PHP 8.0 ou superior.
-* MySQL.
+- PHP 8.0+
+- MySQL 5.7+ / MariaDB
+- Servidor web local (XAMPP, Laragon, Docker, etc.)
 
-### Passo a Passo
+### Passo a passo
 
-1.  **Clone o repositório:**
-    ```bash
-    git clone [https://github.com/seu-usuario/cond-sistema.git](https://github.com/seu-usuario/cond-sistema.git)
-    ```
+1. **Clone o repositório:**
+   ```bash
+   git clone https://github.com/RobertoSoutoJr/COND_V2.git
+   cd COND_V2
+   ```
 
-2.  **Configure o Banco de Dados:**
-    * Acesse o seu gerenciador (ex: phpMyAdmin).
-    * Crie um banco de dados chamado `cond_v1`.
-    * Importe o arquivo `database/cond_v1.sql` (ou o SQL fornecido na raiz).
+2. **Configure as variáveis de ambiente:**
+   ```bash
+   cp .env.example .env
+   ```
+   Edite o `.env` com as credenciais do seu MySQL:
+   ```env
+   DB_HOST=localhost
+   DB_NAME=cond_v1
+   DB_USER=seu_usuario
+   DB_PASS=sua_senha
+   ```
 
-3.  **Configure a Conexão:**
-    * Abra o arquivo `conexao.php`.
-    * Ajuste as credenciais se necessário:
-        ```php
-        $host = 'localhost';
-        $dbname = 'cond_v1';
-        $user = 'root';
-        $pass = '';
-        ```
+3. **Importe o banco de dados:**
+   - Crie o banco `cond_v1`
+   - Importe `database/cond_v1.sql`
 
-4.  **Acesse o Sistema:**
-    * Abra o navegador e acesse `http://localhost/cond-sistema`.
-
-### Credenciais Padrão (Teste)
-* **Login:** `admin`
-* **Senha:** `admin`
+4. **Acesse o sistema:**
+   - `http://localhost/COND_V2`
+   - Crie um usuário pela tela de registro
 
 ---
 
-## 📂 Estrutura de Pastas
+## 📂 Estrutura
+
+```
+COND_V2/
+├── api_*.php              # Endpoints AJAX (lucro, sacolas)
+├── auth_*.php             # Autenticação e checks de sessão
+├── clientes_*.php         # CRUD de clientes
+├── condicionais_*.php     # Fluxo principal (criar, baixar, listar, imprimir)
+├── entradas_*.php         # Entradas de mercadoria
+├── produtos_*.php         # CRUD de produtos
+├── relatorio_*.php        # Relatórios (vendas, inventário, top clientes)
+├── usuarios_*.php         # Gestão de usuários
+├── conexao.php            # PDO via .env
+├── menu.php               # Sidebar reusável
+├── css/, js/, img/        # Assets
+└── database/              # Schema SQL
+```
+
 ---
 
 ## 📄 Licença
 
-Este projeto foi desenvolvido para fins acadêmicos e está sob a licença MIT.
+MIT — veja [LICENSE](LICENSE).
 
 ---
 
-Desenvolvido por **Roberto Souto Junior** - 4º Período de Sistemas de Informação (2025).
+Desenvolvido por **Roberto Souto Jr** — 4º Período de Sistemas de Informação (UNIPAM, 2025)

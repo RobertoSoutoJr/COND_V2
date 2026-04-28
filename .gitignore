@@ -1,0 +1,33 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+/vendor/
+node_modules/
+
+# Logs
+*.log
+error_log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads (user content, should not be in repo)
+/uploads/*
+!/uploads/.gitkeep
+
+# Local DB dumps
+*.sql.bak
+*.sqlite
+
+# Helper scripts (dev only)
+gerar_hash.php
